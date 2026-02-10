@@ -1,0 +1,6 @@
+# Ignora todos os arquivos Markdown
+*.md
+# Reinclui explicitamente o README.md
+!README.md
+# Ignora a pasta .vscode
+.vscode/
