@@ -29,6 +29,7 @@ class TicketApiTest extends TestCase
      */
     public function test_authenticated_user_can_access_tickets_listing(): void
     {
+        /** @var User $user */
         $user = User::factory()->create();
 
         $response = $this->actingAs($user, 'sanctum')
@@ -42,7 +43,9 @@ class TicketApiTest extends TestCase
      */
     public function test_patch_status_creates_log_and_sets_resolved_at_when_resolvido(): void
     {
+        /** @var User $user */
         $user = User::factory()->create();
+        /** @var Ticket $ticket */
         $ticket = Ticket::factory()->aberto()->create([
             'solicitante_id' => $user->id,
         ]);
@@ -98,6 +101,7 @@ class TicketApiTest extends TestCase
      */
     public function test_user_can_create_ticket(): void
     {
+        /** @var User $user */
         $user = User::factory()->create();
 
         $response = $this->actingAs($user, 'sanctum')
@@ -123,10 +127,14 @@ class TicketApiTest extends TestCase
      */
     public function test_only_solicitante_or_admin_can_delete_ticket(): void
     {
+        /** @var User $owner */
         $owner = User::factory()->create(['role' => 'user']);
+        /** @var User $otherUser */
         $otherUser = User::factory()->create(['role' => 'user']);
+        /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin']);
 
+        /** @var Ticket $ticket */
         $ticket = Ticket::factory()->aberto()->create([
             'solicitante_id' => $owner->id,
         ]);
@@ -164,6 +172,7 @@ class TicketApiTest extends TestCase
      */
     public function test_ticket_listing_supports_filters(): void
     {
+        /** @var User $user */
         $user = User::factory()->create();
 
         Ticket::factory()->aberto()->alta()->create(['solicitante_id' => $user->id]);
@@ -197,6 +206,7 @@ class TicketApiTest extends TestCase
      */
     public function test_ticket_listing_supports_text_search(): void
     {
+        /** @var User $user */
         $user = User::factory()->create();
 
         Ticket::factory()->create([
@@ -223,6 +233,7 @@ class TicketApiTest extends TestCase
      */
     public function test_ticket_creation_validation(): void
     {
+        /** @var User $user */
         $user = User::factory()->create();
 
         // Missing required fields

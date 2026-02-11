@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Change this to your Laravel server IP/URL
 // For Android emulator use 10.0.2.2, for iOS simulator use localhost
 // For physical device use your computer's local IP
-const BASE_URL = 'http://localhost:8000/api';
+const BASE_URL = 'http://192.168.100.64:8000/api';
 
 const api = axios.create({
   baseURL: BASE_URL,
