@@ -58,6 +58,8 @@ class TicketService
 
             if ($novoStatus === TicketStatus::RESOLVIDO) {
                 $updateData['resolved_at'] = now();
+            } elseif ($statusAnterior === TicketStatus::RESOLVIDO) {
+                $updateData['resolved_at'] = null;
             }
 
             $ticket->update($updateData);

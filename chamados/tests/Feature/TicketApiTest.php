@@ -180,6 +180,38 @@ test('ticket listing supports text search', function () {
     expect($response->json('data'))->toHaveCount(1);
 });
 
+test('resolved_at is cleared when ticket is reopened from resolvido', function () {
+    $user = User::factory()->create();
+    $ticket = Ticket::factory()->aberto()->create([
+        'solicitante_id' => $user->id,
+    ]);
+
+    // Move to RESOLVIDO
+    $this->actingAs($user, 'sanctum')
+        ->patchJson("/api/tickets/{$ticket->id}/status", [
+            'status' => 'EM_ANDAMENTO',
+        ]);
+
+    $this->actingAs($user, 'sanctum')
+        ->patchJson("/api/tickets/{$ticket->id}/status", [
+            'status' => 'RESOLVIDO',
+        ]);
+
+    $ticket->refresh();
+    expect($ticket->resolved_at)->not->toBeNull();
+
+    // Reopen to EM_ANDAMENTO — resolved_at must be cleared
+    $response = $this->actingAs($user, 'sanctum')
+        ->patchJson("/api/tickets/{$ticket->id}/status", [
+            'status' => 'EM_ANDAMENTO',
+        ]);
+
+    $response->assertStatus(200);
+    $ticket->refresh();
+    expect($ticket->resolved_at)->toBeNull();
+    expect($ticket->status->value)->toBe('EM_ANDAMENTO');
+});
+
 test('ticket creation validation', function () {
     $user = User::factory()->create();
 
