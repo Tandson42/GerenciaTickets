@@ -102,7 +102,7 @@ class TicketController extends Controller
      */
     public function updateStatus(UpdateTicketStatusRequest $request, Ticket $ticket): TicketResource
     {
-        $this->authorize('update', $ticket);
+        $this->authorize('updateStatus', $ticket);
 
         $novoStatus = TicketStatus::from($request->validated('status'));
 

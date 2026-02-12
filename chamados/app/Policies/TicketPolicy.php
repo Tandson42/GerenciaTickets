@@ -32,11 +32,19 @@ class TicketPolicy
     }
 
     /**
-     * Anyone authenticated can update a ticket.
+     * Only the solicitante or an admin can update a ticket.
      */
     public function update(User $user, Ticket $ticket): bool
     {
-        return true;
+        return $user->isAdmin() || $user->id === $ticket->solicitante_id;
+    }
+
+    /**
+     * Only the solicitante or an admin can update ticket status.
+     */
+    public function updateStatus(User $user, Ticket $ticket): bool
+    {
+        return $user->isAdmin() || $user->id === $ticket->solicitante_id;
     }
 
     /**

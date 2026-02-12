@@ -11,6 +11,10 @@ class UpdateTicketRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        // If trying to update responsavel_id, only admin can do it
+        if ($this->has('responsavel_id') && !auth()->user()->isAdmin()) {
+            return false;
+        }
         return true;
     }
 

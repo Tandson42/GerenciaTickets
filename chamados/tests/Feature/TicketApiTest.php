@@ -244,3 +244,163 @@ test('ticket creation validation', function () {
     $response->assertStatus(422);
     $response->assertJsonValidationErrors(['descricao']);
 });
+
+test('user cannot edit ticket of another user', function () {
+    $owner = User::factory()->create(['role' => 'user']);
+    $otherUser = User::factory()->create(['role' => 'user']);
+
+    $ticket = Ticket::factory()->aberto()->create([
+        'solicitante_id' => $owner->id,
+    ]);
+
+    // Other user cannot edit
+    $response = $this->actingAs($otherUser, 'sanctum')
+        ->putJson("/api/tickets/{$ticket->id}", [
+            'titulo' => 'Editado',
+            'descricao' => 'Nova descrição que deve ser rejeitada por segurança.',
+        ]);
+
+    $response->assertStatus(403);
+
+    // Verify ticket was not modified
+    $ticket->refresh();
+    expect($ticket->titulo)->not->toBe('Editado');
+});
+
+test('user can edit their own ticket', function () {
+    $user = User::factory()->create(['role' => 'user']);
+
+    $ticket = Ticket::factory()->aberto()->create([
+        'solicitante_id' => $user->id,
+    ]);
+
+    // User can edit own ticket
+    $response = $this->actingAs($user, 'sanctum')
+        ->putJson("/api/tickets/{$ticket->id}", [
+            'titulo' => 'Novo título',
+            'descricao' => 'Esta é uma nova descrição do ticket que agora foi editada.',
+            'prioridade' => 'ALTA',
+        ]);
+
+    $response->assertStatus(200);
+    $response->assertJsonPath('data.titulo', 'Novo título');
+    $response->assertJsonPath('data.prioridade', 'ALTA');
+
+    // Verify in database
+    $ticket->refresh();
+    expect($ticket->titulo)->toBe('Novo título');
+});
+
+test('admin can edit any ticket', function () {
+    $owner = User::factory()->create(['role' => 'user']);
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $ticket = Ticket::factory()->aberto()->create([
+        'solicitante_id' => $owner->id,
+    ]);
+
+    // Admin can edit ticket of another user
+    $response = $this->actingAs($admin, 'sanctum')
+        ->putJson("/api/tickets/{$ticket->id}", [
+            'titulo' => 'Editado por admin',
+            'descricao' => 'Esta é uma descrição editada pelo administrador do sistema.',
+            'prioridade' => 'ALTA',
+        ]);
+
+    $response->assertStatus(200);
+    $response->assertJsonPath('data.titulo', 'Editado por admin');
+
+    // Verify in database
+    $ticket->refresh();
+    expect($ticket->titulo)->toBe('Editado por admin');
+});
+
+test('user cannot set responsavel_id when updating ticket', function () {
+    $user = User::factory()->create(['role' => 'user']);
+    $admin = User::factory()->create(['role' => 'admin']);
+    $responsavel = User::factory()->create(['role' => 'user']);
+
+    $ticket = Ticket::factory()->aberto()->create([
+        'solicitante_id' => $user->id,
+        'responsavel_id' => null,
+    ]);
+
+    // User tries to set responsavel_id — should be rejected
+    $response = $this->actingAs($user, 'sanctum')
+        ->putJson("/api/tickets/{$ticket->id}", [
+            'responsavel_id' => $responsavel->id,
+        ]);
+
+    $response->assertStatus(403);
+
+    // Verify responsavel_id was not set
+    $ticket->refresh();
+    expect($ticket->responsavel_id)->toBeNull();
+});
+
+test('admin can set responsavel_id when updating ticket', function () {
+    $owner = User::factory()->create(['role' => 'user']);
+    $admin = User::factory()->create(['role' => 'admin']);
+    $responsavel = User::factory()->create(['role' => 'user']);
+
+    $ticket = Ticket::factory()->aberto()->create([
+        'solicitante_id' => $owner->id,
+        'responsavel_id' => null,
+    ]);
+
+    // Admin can set responsavel_id
+    $response = $this->actingAs($admin, 'sanctum')
+        ->putJson("/api/tickets/{$ticket->id}", [
+            'responsavel_id' => $responsavel->id,
+        ]);
+
+    $response->assertStatus(200);
+    $response->assertJsonPath('data.responsavel.id', $responsavel->id);
+
+    // Verify responsavel_id was set
+    $ticket->refresh();
+    expect($ticket->responsavel_id)->toBe($responsavel->id);
+});
+
+test('user cannot change status of another user ticket', function () {
+    $owner = User::factory()->create(['role' => 'user']);
+    $otherUser = User::factory()->create(['role' => 'user']);
+
+    $ticket = Ticket::factory()->aberto()->create([
+        'solicitante_id' => $owner->id,
+    ]);
+
+    // Other user cannot change status
+    $response = $this->actingAs($otherUser, 'sanctum')
+        ->patchJson("/api/tickets/{$ticket->id}/status", [
+            'status' => 'EM_ANDAMENTO',
+        ]);
+
+    $response->assertStatus(403);
+
+    // Verify status was not changed
+    $ticket->refresh();
+    expect($ticket->status->value)->toBe('ABERTO');
+});
+
+test('admin can change status of any ticket', function () {
+    $owner = User::factory()->create(['role' => 'user']);
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $ticket = Ticket::factory()->aberto()->create([
+        'solicitante_id' => $owner->id,
+    ]);
+
+    // Admin can change status of another user ticket
+    $response = $this->actingAs($admin, 'sanctum')
+        ->patchJson("/api/tickets/{$ticket->id}/status", [
+            'status' => 'EM_ANDAMENTO',
+        ]);
+
+    $response->assertStatus(200);
+    $response->assertJsonPath('data.status', 'EM_ANDAMENTO');
+
+    // Verify status was changed
+    $ticket->refresh();
+    expect($ticket->status->value)->toBe('EM_ANDAMENTO');
+});

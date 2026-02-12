@@ -45,6 +45,11 @@ class TicketService
 
     public function update(Ticket $ticket, array $data): Ticket
     {
+        // Prevent non-admin users from updating responsavel_id
+        if (isset($data['responsavel_id']) && !auth()->user()->isAdmin()) {
+            unset($data['responsavel_id']);
+        }
+
         $ticket->update($data);
         return $ticket->fresh();
     }
