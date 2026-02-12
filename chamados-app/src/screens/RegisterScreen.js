@@ -1,12 +1,19 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, Alert, ActivityIndicator, ScrollView,
+  View, Text, StyleSheet, KeyboardAvoidingView, Platform, Alert, ScrollView,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import { useResponsive } from '../hooks/useResponsive';
+import { colors } from '../themes/colors';
+import { typography } from '../themes/typography';
+import { spacing } from '../themes/spacing';
+import Input from '../components/ui/Input';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
 
 export default function RegisterScreen({ navigation }) {
   const { register } = useAuth();
+  const { isDesktop } = useResponsive();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -46,72 +53,71 @@ export default function RegisterScreen({ navigation }) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Criar Conta</Text>
-        <Text style={styles.subtitle}>Preencha seus dados para se registrar</Text>
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          isDesktop && styles.contentDesktop,
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={[styles.formWrapper, isDesktop && styles.formWrapperDesktop]}>
+          <Text style={styles.title}>Criar Conta</Text>
+          <Text style={styles.subtitle}>Preencha seus dados para se registrar</Text>
 
-        <View style={styles.form}>
-          <Text style={styles.label}>Nome</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Seu nome completo"
-            placeholderTextColor="#9CA3AF"
-            value={name}
-            onChangeText={setName}
-          />
-
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="seu@email.com"
-            placeholderTextColor="#9CA3AF"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-
-          <Text style={styles.label}>Senha</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Mínimo 8 caracteres"
-            placeholderTextColor="#9CA3AF"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-
-          <Text style={styles.label}>Confirmar Senha</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Repita a senha"
-            placeholderTextColor="#9CA3AF"
-            value={passwordConfirmation}
-            onChangeText={setPasswordConfirmation}
-            secureTextEntry
-          />
-
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleRegister}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Cadastrar</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.linkButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.linkText}>
-              Já tem conta? <Text style={styles.linkBold}>Fazer login</Text>
-            </Text>
-          </TouchableOpacity>
+          <Card elevation="lg" padding={spacing.lg + 8}>
+            <Input
+              label="Nome"
+              value={name}
+              onChangeText={setName}
+              placeholder="Seu nome completo"
+              required
+            />
+            <Input
+              label="Email"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="seu@email.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              required
+            />
+            <Input
+              label="Senha"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Mínimo 8 caracteres"
+              secureTextEntry
+              required
+            />
+            <Input
+              label="Confirmar Senha"
+              value={passwordConfirmation}
+              onChangeText={setPasswordConfirmation}
+              placeholder="Repita a senha"
+              secureTextEntry
+              required
+            />
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={loading}
+              onPress={handleRegister}
+              style={{ marginTop: spacing.sm }}
+            >
+              Cadastrar
+            </Button>
+            <Button
+              variant="ghost"
+              size="md"
+              fullWidth
+              onPress={() => navigation.goBack()}
+              style={{ marginTop: spacing.sm }}
+            >
+              Já tem conta? Fazer login
+            </Button>
+          </Card>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -121,79 +127,34 @@ export default function RegisterScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.background,
   },
   content: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 40,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xl,
+  },
+  contentDesktop: {
+    alignItems: 'center',
+    paddingVertical: spacing['3xl'],
+  },
+  formWrapper: {
+    width: '100%',
+  },
+  formWrapperDesktop: {
+    maxWidth: 480,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#1F2937',
+    ...typography.h1,
+    color: colors.textPrimary,
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: 15,
-    color: '#6B7280',
+    ...typography.body,
+    color: colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 32,
-  },
-  form: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: '#1F2937',
-    marginBottom: 16,
-  },
-  button: {
-    backgroundColor: '#6366F1',
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  linkButton: {
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  linkBold: {
-    color: '#6366F1',
-    fontWeight: '700',
+    marginBottom: spacing.xl,
   },
 });

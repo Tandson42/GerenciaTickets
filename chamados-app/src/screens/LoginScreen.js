@@ -1,12 +1,19 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
+  View, Text, StyleSheet, KeyboardAvoidingView, Platform, Alert, ScrollView,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import { useResponsive } from '../hooks/useResponsive';
+import { colors } from '../themes/colors';
+import { typography } from '../themes/typography';
+import { spacing, radius, shadows } from '../themes/spacing';
+import Input from '../components/ui/Input';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
 
 export default function LoginScreen({ navigation }) {
   const { login } = useAuth();
+  const { isDesktop, screenWidth } = useResponsive();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,67 +37,92 @@ export default function LoginScreen({ navigation }) {
     }
   }
 
+  const formContent = (
+    <View style={[styles.formWrapper, isDesktop && { maxWidth: 420 }]}>
+      <Card elevation="lg" padding={spacing.lg + 8}>
+        <Input
+          label="Email"
+          value={email}
+          onChangeText={setEmail}
+          placeholder="seu@email.com"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <Input
+          label="Senha"
+          value={password}
+          onChangeText={setPassword}
+          placeholder="••••••••"
+          secureTextEntry
+        />
+        <Button
+          variant="primary"
+          size="lg"
+          fullWidth
+          loading={loading}
+          onPress={handleLogin}
+          style={{ marginTop: spacing.sm }}
+        >
+          Entrar
+        </Button>
+        <Button
+          variant="ghost"
+          size="md"
+          fullWidth
+          onPress={() => navigation.navigate('Register')}
+          style={{ marginTop: spacing.sm }}
+        >
+          Não tem conta? Cadastre-se
+        </Button>
+      </Card>
+
+      <View style={styles.credentials}>
+        <Text style={styles.credTitle}>Credenciais de teste:</Text>
+        <Text style={styles.credText}>Admin: admin@example.com / password123</Text>
+        <Text style={styles.credText}>User: user@example.com / password123</Text>
+      </View>
+    </View>
+  );
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.content}>
-        <Text style={styles.emoji}>🎫</Text>
-        <Text style={styles.title}>Gestão de Chamados</Text>
-        <Text style={styles.subtitle}>Faça login para continuar</Text>
-
-        <View style={styles.form}>
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="seu@email.com"
-            placeholderTextColor="#9CA3AF"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-
-          <Text style={styles.label}>Senha</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="••••••••"
-            placeholderTextColor="#9CA3AF"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Entrar</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.linkButton}
-            onPress={() => navigation.navigate('Register')}
-          >
-            <Text style={styles.linkText}>
-              Não tem conta? <Text style={styles.linkBold}>Cadastre-se</Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.credentials}>
-          <Text style={styles.credTitle}>Credenciais de teste:</Text>
-          <Text style={styles.credText}>Admin: admin@example.com / password123</Text>
-          <Text style={styles.credText}>User: user@example.com / password123</Text>
-        </View>
-      </View>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        {isDesktop ? (
+          <View style={styles.desktopLayout}>
+            {/* Branding Side */}
+            <View style={styles.brandingSide}>
+              <Text style={styles.brandEmoji}>🎫</Text>
+              <Text style={styles.brandTitle}>Gestão de{'\n'}Chamados</Text>
+              <Text style={styles.brandSubtitle}>
+                Gerencie seus tickets de forma{'\n'}simples, rápida e organizada.
+              </Text>
+              <View style={styles.brandFeatures}>
+                <Text style={styles.brandFeature}>✅ Crie e acompanhe chamados</Text>
+                <Text style={styles.brandFeature}>📊 Filtros por status e prioridade</Text>
+                <Text style={styles.brandFeature}>📋 Histórico completo de alterações</Text>
+              </View>
+            </View>
+            {/* Form Side */}
+            <View style={styles.formSide}>
+              {formContent}
+            </View>
+          </View>
+        ) : (
+          <View style={styles.mobileLayout}>
+            <Text style={styles.emoji}>🎫</Text>
+            <Text style={styles.title}>Gestão de Chamados</Text>
+            <Text style={styles.subtitle}>Faça login para continuar</Text>
+            {formContent}
+          </View>
+        )}
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -98,100 +130,99 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.background,
   },
-  content: {
+  scrollContent: {
+    flexGrow: 1,
+  },
+  // Desktop
+  desktopLayout: {
+    flex: 1,
+    flexDirection: 'row',
+    minHeight: '100%',
+  },
+  brandingSide: {
+    flex: 1,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing['3xl'],
+  },
+  brandEmoji: {
+    fontSize: 72,
+    marginBottom: spacing.lg,
+  },
+  brandTitle: {
+    ...typography.display,
+    color: colors.textInverse,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+    fontSize: 40,
+    lineHeight: 48,
+  },
+  brandSubtitle: {
+    ...typography.body,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+  },
+  brandFeatures: {
+    alignSelf: 'stretch',
+    maxWidth: 300,
+    alignItems: 'flex-start',
+  },
+  brandFeature: {
+    ...typography.body,
+    color: 'rgba(255,255,255,0.9)',
+    marginBottom: spacing.sm,
+  },
+  formSide: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    alignItems: 'center',
+    padding: spacing['2xl'],
+  },
+  formWrapper: {
+    width: '100%',
+  },
+  // Mobile
+  mobileLayout: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xl,
   },
   emoji: {
     fontSize: 48,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#1F2937',
+    ...typography.h1,
+    color: colors.textPrimary,
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: 15,
-    color: '#6B7280',
+    ...typography.body,
+    color: colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 32,
-  },
-  form: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: '#1F2937',
-    marginBottom: 16,
-  },
-  button: {
-    backgroundColor: '#6366F1',
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  linkButton: {
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  linkBold: {
-    color: '#6366F1',
-    fontWeight: '700',
+    marginBottom: spacing.xl,
   },
   credentials: {
-    marginTop: 24,
-    padding: 16,
-    backgroundColor: '#EEF2FF',
-    borderRadius: 12,
+    marginTop: spacing.lg,
+    padding: spacing.md,
+    backgroundColor: colors.primaryBg,
+    borderRadius: radius.md,
   },
   credTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#4338CA',
-    marginBottom: 6,
+    ...typography.captionMedium,
+    color: colors.primaryDark,
+    marginBottom: spacing.xs + 2,
   },
   credText: {
-    fontSize: 12,
-    color: '#6366F1',
+    ...typography.caption,
+    color: colors.primary,
     marginBottom: 2,
   },
 });

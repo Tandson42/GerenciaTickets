@@ -1,37 +1,20 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { STATUS_COLORS, STATUS_LABELS } from '../utils/constants';
+import Badge from './ui/Badge';
+import { STATUS_LABELS } from '../utils/constants';
 
-export default function StatusBadge({ status }) {
-  const color = STATUS_COLORS[status] || '#6B7280';
+const STATUS_VARIANT = {
+  ABERTO: 'info',
+  EM_ANDAMENTO: 'warning',
+  RESOLVIDO: 'success',
+};
+
+export default function StatusBadge({ status, size = 'md' }) {
+  const variant = STATUS_VARIANT[status] || 'neutral';
   const label = STATUS_LABELS[status] || status;
 
   return (
-    <View style={[styles.badge, { backgroundColor: color + '20', borderColor: color }]}>
-      <View style={[styles.dot, { backgroundColor: color }]} />
-      <Text style={[styles.text, { color }]}>{label}</Text>
-    </View>
+    <Badge variant={variant} size={size} showDot>
+      {label}
+    </Badge>
   );
 }
-
-const styles = StyleSheet.create({
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignSelf: 'flex-start',
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
-  },
-  text: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-});

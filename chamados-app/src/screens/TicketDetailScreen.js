@@ -1,18 +1,26 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Alert, ActivityIndicator, Modal,
+  Alert, ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { ticketService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useResponsive } from '../hooks/useResponsive';
 import StatusBadge from '../components/StatusBadge';
 import PrioridadeBadge from '../components/PrioridadeBadge';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import Dialog from '../components/ui/Dialog';
 import { STATUS_OPTIONS } from '../utils/constants';
+import { colors } from '../themes/colors';
+import { typography } from '../themes/typography';
+import { spacing, radius } from '../themes/spacing';
 
 export default function TicketDetailScreen({ route, navigation }) {
   const { ticketId } = route.params;
   const { user } = useAuth();
+  const { isDesktop } = useResponsive();
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [statusModalVisible, setStatusModalVisible] = useState(false);
@@ -55,7 +63,7 @@ export default function TicketDetailScreen({ route, navigation }) {
   async function handleDelete() {
     Alert.alert(
       'Confirmar Exclusão',
-      'Tem certeza que deseja excluir este chamado?',
+      'Tem certeza que deseja excluir este chamado? Esta ação não pode ser desfeita.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -87,17 +95,18 @@ export default function TicketDetailScreen({ route, navigation }) {
   if (loading) {
     return (
       <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color="#6366F1" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   if (!ticket) return null;
 
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Header */}
-      <View style={styles.headerCard}>
+  // Main content - ticket info
+  const mainContent = (
+    <View style={[styles.mainContent, isDesktop && styles.mainContentDesktop]}>
+      {/* Header Card */}
+      <Card elevation="md">
         <View style={styles.headerTop}>
           <Text style={styles.ticketId}>Chamado #{ticket.id}</Text>
           <Text style={styles.date}>
@@ -109,176 +118,377 @@ export default function TicketDetailScreen({ route, navigation }) {
           <StatusBadge status={ticket.status} />
           <PrioridadeBadge prioridade={ticket.prioridade} />
         </View>
-      </View>
+      </Card>
 
       {/* Description */}
-      <View style={styles.card}>
+      <Card elevation="sm">
         <Text style={styles.cardTitle}>📝 Descrição</Text>
         <Text style={styles.descricao}>{ticket.descricao}</Text>
-      </View>
+      </Card>
 
       {/* People */}
-      <View style={styles.card}>
+      <Card elevation="sm">
         <Text style={styles.cardTitle}>👥 Pessoas</Text>
-        <View style={styles.personRow}>
-          <Text style={styles.personLabel}>Solicitante:</Text>
-          <Text style={styles.personName}>{ticket.solicitante?.name || 'N/A'}</Text>
+        <View style={styles.infoGrid}>
+          <InfoRow label="Solicitante" value={ticket.solicitante?.name || 'N/A'} />
+          <InfoRow label="Responsável" value={ticket.responsavel?.name || 'Não atribuído'} />
+          {ticket.resolved_at && (
+            <InfoRow
+              label="Resolvido em"
+              value={new Date(ticket.resolved_at).toLocaleString('pt-BR')}
+            />
+          )}
         </View>
-        <View style={styles.personRow}>
-          <Text style={styles.personLabel}>Responsável:</Text>
-          <Text style={styles.personName}>{ticket.responsavel?.name || 'Não atribuído'}</Text>
-        </View>
-        {ticket.resolved_at && (
-          <View style={styles.personRow}>
-            <Text style={styles.personLabel}>Resolvido em:</Text>
-            <Text style={styles.personName}>
-              {new Date(ticket.resolved_at).toLocaleString('pt-BR')}
-            </Text>
+      </Card>
+
+      {/* Mobile-only: actions below content */}
+      {!isDesktop && (canChangeStatus || canEdit || canDelete) && (
+        <ActionsSection
+          canChangeStatus={canChangeStatus}
+          canEdit={canEdit}
+          canDelete={canDelete}
+          updating={updating}
+          onStatusPress={() => setStatusModalVisible(true)}
+          onEditPress={() => navigation.navigate('TicketCreate', { ticket })}
+          onDeletePress={handleDelete}
+        />
+      )}
+    </View>
+  );
+
+  // Sidebar content - logs + actions (desktop)
+  const sidebarContent = (
+    <View style={[styles.sidebar, isDesktop && styles.sidebarDesktop]}>
+      {/* Desktop-only: actions in sidebar */}
+      {isDesktop && (canChangeStatus || canEdit || canDelete) && (
+        <Card elevation="sm">
+          <Text style={styles.cardTitle}>⚡ Ações</Text>
+          <View style={styles.sidebarActions}>
+            {canChangeStatus && (
+              <Button
+                variant="primary"
+                size="md"
+                fullWidth
+                loading={updating}
+                icon="🔄"
+                onPress={() => setStatusModalVisible(true)}
+              >
+                Alterar Status
+              </Button>
+            )}
+            {canEdit && (
+              <Button
+                variant="warning"
+                size="md"
+                fullWidth
+                icon="✏️"
+                onPress={() => navigation.navigate('TicketCreate', { ticket })}
+              >
+                Editar
+              </Button>
+            )}
+            {canDelete && (
+              <Button
+                variant="danger"
+                size="md"
+                fullWidth
+                icon="🗑️"
+                onPress={handleDelete}
+              >
+                Excluir
+              </Button>
+            )}
           </View>
-        )}
-      </View>
+        </Card>
+      )}
 
       {/* Logs */}
       {ticket.logs && ticket.logs.length > 0 && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>📋 Histórico de Status</Text>
-          {ticket.logs.map((log) => (
-            <View key={log.id} style={styles.logItem}>
-              <View style={styles.logDot} />
+        <Card elevation="sm">
+          <Text style={styles.cardTitle}>📋 Histórico</Text>
+          {ticket.logs.map((log, index) => (
+            <View
+              key={log.id}
+              style={[
+                styles.logItem,
+                index === ticket.logs.length - 1 && { marginBottom: 0 },
+              ]}
+            >
+              <View style={styles.logTimeline}>
+                <View style={styles.logDot} />
+                {index < ticket.logs.length - 1 && <View style={styles.logLine} />}
+              </View>
               <View style={styles.logContent}>
-                <Text style={styles.logTransition}>
-                  {log.de || '—'} → {log.para}
-                </Text>
+                <View style={styles.logBadges}>
+                  <StatusBadge status={log.de || 'ABERTO'} size="sm" />
+                  <Text style={styles.logArrow}>→</Text>
+                  <StatusBadge status={log.para} size="sm" />
+                </View>
                 <Text style={styles.logMeta}>
-                  por {log.user?.name || `User #${log.user_id}`} •{' '}
+                  por {log.user?.name || `User #${log.user_id}`}
+                </Text>
+                <Text style={styles.logDate}>
                   {new Date(log.created_at).toLocaleString('pt-BR')}
                 </Text>
               </View>
             </View>
           ))}
+        </Card>
+      )}
+    </View>
+  );
+
+  return (
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[
+        styles.content,
+        isDesktop && styles.contentDesktop,
+      ]}
+    >
+      {isDesktop ? (
+        <View style={styles.splitView}>
+          {mainContent}
+          {sidebarContent}
         </View>
+      ) : (
+        <>
+          {mainContent}
+          {sidebarContent}
+        </>
       )}
 
-      {/* Actions */}
-      {(canChangeStatus || canEdit || canDelete) && (
-        <View style={styles.actions}>
-          {canChangeStatus && (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.statusButton]}
-              onPress={() => setStatusModalVisible(true)}
-              disabled={updating}
-            >
-              {updating ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.actionButtonText}>🔄 Alterar Status</Text>
-              )}
-            </TouchableOpacity>
-          )}
-
-          {canEdit && (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.editButton]}
-              onPress={() => navigation.navigate('TicketCreate', { ticket })}
-            >
-              <Text style={styles.actionButtonText}>✏️ Editar</Text>
-            </TouchableOpacity>
-          )}
-
-          {canDelete && (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.deleteButton]}
-              onPress={handleDelete}
-            >
-              <Text style={[styles.actionButtonText, { color: '#EF4444' }]}>🗑️ Excluir</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-
-      {/* Status Modal */}
-      <Modal visible={statusModalVisible} transparent animationType="fade">
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
+      {/* Status Change Dialog */}
+      <Dialog
+        visible={statusModalVisible}
+        title="Alterar Status"
+        onClose={() => setStatusModalVisible(false)}
+      >
+        {statusOptions.map((option) => (
+          <TouchableOpacity
+            key={option.value}
+            style={styles.statusOption}
+            onPress={() => handleStatusChange(option.value)}
+          >
+            <StatusBadge status={option.value} size="lg" />
+          </TouchableOpacity>
+        ))}
+        <Button
+          variant="ghost"
+          size="md"
+          fullWidth
           onPress={() => setStatusModalVisible(false)}
+          style={{ marginTop: spacing.sm }}
         >
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Alterar Status</Text>
-            {statusOptions.map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                style={styles.modalOption}
-                onPress={() => handleStatusChange(option.value)}
-              >
-                <StatusBadge status={option.value} />
-              </TouchableOpacity>
-            ))}
-            <TouchableOpacity
-              style={styles.modalCancel}
-              onPress={() => setStatusModalVisible(false)}
-            >
-              <Text style={styles.modalCancelText}>Cancelar</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+          Cancelar
+        </Button>
+      </Dialog>
     </ScrollView>
   );
 }
 
+// Sub-components
+
+function InfoRow({ label, value }) {
+  return (
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
+    </View>
+  );
+}
+
+function ActionsSection({ canChangeStatus, canEdit, canDelete, updating, onStatusPress, onEditPress, onDeletePress }) {
+  return (
+    <View style={styles.actionsCard}>
+      {canChangeStatus && (
+        <Button
+          variant="primary"
+          size="lg"
+          fullWidth
+          loading={updating}
+          icon="🔄"
+          onPress={onStatusPress}
+        >
+          Alterar Status
+        </Button>
+      )}
+      {canEdit && (
+        <Button
+          variant="warning"
+          size="lg"
+          fullWidth
+          icon="✏️"
+          onPress={onEditPress}
+          style={{ marginTop: spacing.sm + 2 }}
+        >
+          Editar
+        </Button>
+      )}
+      {canDelete && (
+        <Button
+          variant="danger"
+          size="lg"
+          fullWidth
+          icon="🗑️"
+          onPress={onDeletePress}
+          style={{ marginTop: spacing.sm + 2 }}
+        >
+          Excluir
+        </Button>
+      )}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F3F4F6' },
-  content: { padding: 16, paddingBottom: 40 },
+  container: { flex: 1, backgroundColor: colors.background },
+  content: { padding: spacing.md, paddingBottom: spacing.xl + 8 },
+  contentDesktop: {
+    padding: spacing.xl,
+    maxWidth: 1200,
+    alignSelf: 'center',
+    width: '100%',
+  },
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  headerCard: {
-    backgroundColor: '#fff', borderRadius: 16, padding: 20,
-    marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
+
+  // Split view
+  splitView: {
+    flexDirection: 'row',
+    gap: spacing.lg,
   },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  ticketId: { fontSize: 14, fontWeight: '700', color: '#6366F1' },
-  date: { fontSize: 13, color: '#9CA3AF' },
-  titulo: { fontSize: 20, fontWeight: '700', color: '#1F2937', marginBottom: 12 },
-  badges: { flexDirection: 'row', gap: 8 },
-  card: {
-    backgroundColor: '#fff', borderRadius: 16, padding: 20,
-    marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
+  mainContent: {
+    flex: 1,
   },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#1F2937', marginBottom: 12 },
-  descricao: { fontSize: 15, color: '#4B5563', lineHeight: 22 },
-  personRow: { flexDirection: 'row', marginBottom: 8 },
-  personLabel: { fontSize: 14, color: '#6B7280', width: 110 },
-  personName: { fontSize: 14, color: '#1F2937', fontWeight: '500', flex: 1 },
-  logItem: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
+  mainContentDesktop: {
+    flex: 3,
+  },
+  sidebar: {},
+  sidebarDesktop: {
+    flex: 2,
+    position: 'sticky',
+    top: spacing.lg,
+    alignSelf: 'flex-start',
+  },
+
+  // Header
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm + 4,
+  },
+  ticketId: {
+    ...typography.smallMedium,
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  date: {
+    ...typography.caption,
+    color: colors.textTertiary,
+  },
+  titulo: {
+    ...typography.h2,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm + 4,
+  },
+  badges: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+
+  // Card title
+  cardTitle: {
+    ...typography.bodyMedium,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm + 4,
+    fontWeight: '700',
+  },
+  descricao: {
+    ...typography.body,
+    color: colors.textSecondary,
+    lineHeight: 24,
+  },
+
+  // Info
+  infoGrid: {},
+  infoRow: {
+    flexDirection: 'row',
+    marginBottom: spacing.sm,
+    alignItems: 'center',
+  },
+  infoLabel: {
+    ...typography.small,
+    color: colors.textSecondary,
+    width: 110,
+  },
+  infoValue: {
+    ...typography.smallMedium,
+    color: colors.textPrimary,
+    flex: 1,
+  },
+
+  // Logs
+  logItem: {
+    flexDirection: 'row',
+    marginBottom: spacing.md,
+  },
+  logTimeline: {
+    alignItems: 'center',
+    width: 20,
+    marginRight: spacing.sm + 4,
+  },
   logDot: {
-    width: 8, height: 8, borderRadius: 4, backgroundColor: '#6366F1',
-    marginTop: 5, marginRight: 12,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+    marginTop: 4,
   },
-  logContent: { flex: 1 },
-  logTransition: { fontSize: 14, fontWeight: '600', color: '#1F2937' },
-  logMeta: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
-  actions: { marginTop: 8, gap: 10 },
-  actionButton: { borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
-  statusButton: { backgroundColor: '#6366F1' },
-  editButton: { backgroundColor: '#F59E0B' },
-  deleteButton: { backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FECACA' },
-  actionButtonText: { fontSize: 15, fontWeight: '700', color: '#fff' },
-  modalOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center', alignItems: 'center',
+  logLine: {
+    width: 2,
+    flex: 1,
+    backgroundColor: colors.gray200,
+    marginTop: 4,
   },
-  modalContent: {
-    backgroundColor: '#fff', borderRadius: 16, padding: 24, width: '80%', maxWidth: 320,
+  logContent: {
+    flex: 1,
   },
-  modalTitle: {
-    fontSize: 18, fontWeight: '700', color: '#1F2937', marginBottom: 16, textAlign: 'center',
+  logBadges: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
+    flexWrap: 'wrap',
   },
-  modalOption: { paddingVertical: 12, paddingHorizontal: 8, borderRadius: 8, marginBottom: 4 },
-  modalCancel: {
-    marginTop: 12, paddingVertical: 12, alignItems: 'center',
-    borderTopWidth: 1, borderTopColor: '#E5E7EB',
+  logArrow: {
+    ...typography.small,
+    color: colors.textTertiary,
+    fontWeight: '700',
   },
-  modalCancelText: { fontSize: 15, color: '#6B7280', fontWeight: '600' },
+  logMeta: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  logDate: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: 1,
+  },
+
+  // Actions
+  actionsCard: {
+    marginTop: spacing.sm,
+  },
+  sidebarActions: {
+    gap: spacing.sm,
+  },
+
+  // Status dialog
+  statusOption: {
+    paddingVertical: spacing.sm + 4,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.md,
+    marginBottom: spacing.xs,
+  },
 });

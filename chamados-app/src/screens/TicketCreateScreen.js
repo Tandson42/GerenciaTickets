@@ -1,14 +1,21 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, Alert, ActivityIndicator, Modal,
+  View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, Modal,
 } from 'react-native';
 import { ticketService } from '../services/api';
 import { PRIORIDADE_OPTIONS, PRIORIDADE_COLORS } from '../utils/constants';
+import { useResponsive } from '../hooks/useResponsive';
+import { colors } from '../themes/colors';
+import { typography } from '../themes/typography';
+import { spacing, radius, shadows } from '../themes/spacing';
+import Input from '../components/ui/Input';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
 
 export default function TicketCreateScreen({ route, navigation }) {
   const editTicket = route.params?.ticket;
   const isEditing = !!editTicket;
+  const { isDesktop } = useResponsive();
 
   const [titulo, setTitulo] = useState(editTicket?.titulo || '');
   const [descricao, setDescricao] = useState(editTicket?.descricao || '');
@@ -19,7 +26,6 @@ export default function TicketCreateScreen({ route, navigation }) {
   const prioridadeOptions = PRIORIDADE_OPTIONS.filter(p => p.value !== '');
 
   async function handleSubmit() {
-    // Client-side validation
     if (titulo.trim().length < 5) {
       Alert.alert('Erro', 'O título deve ter no mínimo 5 caracteres.');
       return;
@@ -63,69 +69,83 @@ export default function TicketCreateScreen({ route, navigation }) {
   const selectedPrioridade = prioridadeOptions.find(p => p.value === prioridade);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <View style={styles.card}>
-        {/* Título */}
-        <Text style={styles.label}>
-          Título <Text style={styles.required}>*</Text>
-        </Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Ex: Problema no sistema de login"
-          placeholderTextColor="#9CA3AF"
-          value={titulo}
-          onChangeText={setTitulo}
-          maxLength={120}
-        />
-        <Text style={styles.charCount}>{titulo.length}/120 (mín. 5)</Text>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[
+        styles.content,
+        isDesktop && styles.contentDesktop,
+      ]}
+      keyboardShouldPersistTaps="handled"
+    >
+      <View style={[styles.formWrapper, isDesktop && styles.formWrapperDesktop]}>
+        {isDesktop && (
+          <Text style={styles.pageTitle}>
+            {isEditing ? '✏️ Editar Chamado' : '📝 Novo Chamado'}
+          </Text>
+        )}
 
-        {/* Descrição */}
-        <Text style={styles.label}>
-          Descrição <Text style={styles.required}>*</Text>
-        </Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          placeholder="Descreva o chamado com detalhes..."
-          placeholderTextColor="#9CA3AF"
-          value={descricao}
-          onChangeText={setDescricao}
-          multiline
-          numberOfLines={5}
-          textAlignVertical="top"
-        />
-        <Text style={styles.charCount}>{descricao.length} caracteres (mín. 20)</Text>
+        <Card elevation="lg" padding={spacing.lg + 8}>
+          <Input
+            label="Título"
+            value={titulo}
+            onChangeText={setTitulo}
+            placeholder="Ex: Problema no sistema de login"
+            maxLength={120}
+            minLength={5}
+            required
+          />
 
-        {/* Prioridade */}
-        <Text style={styles.label}>
-          Prioridade <Text style={styles.required}>*</Text>
-        </Text>
-        <TouchableOpacity
-          style={styles.pickerButton}
-          onPress={() => setPrioridadeModalVisible(true)}
-        >
-          <View style={[styles.prioridadeDot, { backgroundColor: PRIORIDADE_COLORS[prioridade] }]} />
-          <Text style={styles.pickerText}>{selectedPrioridade?.label || prioridade}</Text>
-          <Text style={styles.pickerArrow}>▼</Text>
-        </TouchableOpacity>
+          <Input
+            label="Descrição"
+            value={descricao}
+            onChangeText={setDescricao}
+            placeholder="Descreva o chamado com detalhes..."
+            multiline
+            numberOfLines={5}
+            minLength={20}
+            required
+          />
 
-        {/* Submit */}
-        <TouchableOpacity
-          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.submitButtonText}>
-              {isEditing ? '💾 Salvar Alterações' : '📝 Criar Chamado'}
+          {/* Prioridade Picker */}
+          <Text style={styles.label}>
+            Prioridade <Text style={styles.required}>*</Text>
+          </Text>
+          <TouchableOpacity
+            style={styles.pickerButton}
+            onPress={() => setPrioridadeModalVisible(true)}
+          >
+            <View style={[
+              styles.prioridadeDot,
+              { backgroundColor: PRIORIDADE_COLORS[prioridade] },
+            ]} />
+            <Text style={styles.pickerText}>
+              {selectedPrioridade?.label || prioridade}
             </Text>
-          )}
-        </TouchableOpacity>
+            <Text style={styles.pickerArrow}>▼</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.cancelButtonText}>Cancelar</Text>
-        </TouchableOpacity>
+          {/* Submit */}
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            loading={loading}
+            onPress={handleSubmit}
+            style={{ marginTop: spacing.lg }}
+          >
+            {isEditing ? '💾 Salvar Alterações' : '📝 Criar Chamado'}
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="md"
+            fullWidth
+            onPress={() => navigation.goBack()}
+            style={{ marginTop: spacing.sm }}
+          >
+            Cancelar
+          </Button>
+        </Card>
       </View>
 
       {/* Prioridade Modal */}
@@ -149,7 +169,10 @@ export default function TicketCreateScreen({ route, navigation }) {
                   setPrioridadeModalVisible(false);
                 }}
               >
-                <View style={[styles.prioridadeDot, { backgroundColor: PRIORIDADE_COLORS[option.value] }]} />
+                <View style={[
+                  styles.prioridadeDot,
+                  { backgroundColor: PRIORIDADE_COLORS[option.value] },
+                ]} />
                 <Text style={[
                   styles.modalOptionText,
                   prioridade === option.value && styles.modalOptionTextActive,
@@ -166,53 +189,100 @@ export default function TicketCreateScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F3F4F6' },
-  content: { padding: 16, paddingBottom: 40 },
-  card: {
-    backgroundColor: '#fff', borderRadius: 16, padding: 24,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08, shadowRadius: 12, elevation: 4,
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
-  label: { fontSize: 15, fontWeight: '600', color: '#374151', marginBottom: 8, marginTop: 16 },
-  required: { color: '#EF4444' },
-  input: {
-    backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB',
-    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, color: '#1F2937',
+  content: {
+    padding: spacing.md,
+    paddingBottom: spacing.xl + 8,
   },
-  textArea: { minHeight: 120 },
-  charCount: { fontSize: 12, color: '#9CA3AF', marginTop: 4, textAlign: 'right' },
+  contentDesktop: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+  },
+  formWrapper: {
+    width: '100%',
+  },
+  formWrapperDesktop: {
+    maxWidth: 560,
+  },
+  pageTitle: {
+    ...typography.h2,
+    color: colors.textPrimary,
+    marginBottom: spacing.lg,
+  },
+  label: {
+    ...typography.smallMedium,
+    color: colors.gray700,
+    marginBottom: spacing.xs + 2,
+    marginTop: spacing.xs,
+  },
+  required: {
+    color: colors.error,
+  },
   pickerButton: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB',
-    borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10,
-    paddingHorizontal: 14, paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.gray50,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 4,
   },
-  prioridadeDot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
-  pickerText: { flex: 1, fontSize: 15, color: '#1F2937' },
-  pickerArrow: { fontSize: 10, color: '#9CA3AF' },
-  submitButton: {
-    backgroundColor: '#6366F1', borderRadius: 12, paddingVertical: 16,
-    alignItems: 'center', marginTop: 24,
+  prioridadeDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: spacing.sm + 2,
   },
-  submitButtonDisabled: { opacity: 0.7 },
-  submitButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  cancelButton: { marginTop: 12, alignItems: 'center', paddingVertical: 12 },
-  cancelButtonText: { fontSize: 15, color: '#6B7280', fontWeight: '600' },
+  pickerText: {
+    flex: 1,
+    ...typography.body,
+    color: colors.textPrimary,
+  },
+  pickerArrow: {
+    fontSize: 10,
+    color: colors.textTertiary,
+  },
   modalOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center', alignItems: 'center',
+    flex: 1,
+    backgroundColor: colors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#fff', borderRadius: 16, padding: 24, width: '80%', maxWidth: 320,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    width: '80%',
+    maxWidth: 340,
+    ...shadows.xl,
   },
   modalTitle: {
-    fontSize: 18, fontWeight: '700', color: '#1F2937', marginBottom: 16, textAlign: 'center',
+    ...typography.h3,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+    textAlign: 'center',
   },
   modalOption: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 14, paddingHorizontal: 16, borderRadius: 8, marginBottom: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm + 6,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    marginBottom: spacing.xs,
   },
-  modalOptionActive: { backgroundColor: '#EEF2FF' },
-  modalOptionText: { fontSize: 15, color: '#4B5563' },
-  modalOptionTextActive: { color: '#6366F1', fontWeight: '600' },
+  modalOptionActive: {
+    backgroundColor: colors.primaryBg,
+  },
+  modalOptionText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  modalOptionTextActive: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
 });

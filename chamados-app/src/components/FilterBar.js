@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Modal } from 'react-native';
 import { STATUS_OPTIONS, PRIORIDADE_OPTIONS } from '../utils/constants';
+import { useResponsive } from '../hooks/useResponsive';
+import { colors } from '../themes/colors';
+import { typography } from '../themes/typography';
+import { spacing, radius, shadows } from '../themes/spacing';
 
 function PickerSelect({ label, options, value, onChange }) {
   const [visible, setVisible] = useState(false);
@@ -8,7 +12,10 @@ function PickerSelect({ label, options, value, onChange }) {
 
   return (
     <>
-      <TouchableOpacity style={styles.pickerButton} onPress={() => setVisible(true)}>
+      <TouchableOpacity
+        style={[styles.pickerButton, value ? styles.pickerButtonActive : null]}
+        onPress={() => setVisible(true)}
+      >
         <Text style={[styles.pickerText, value ? styles.pickerTextActive : null]}>
           {selectedLabel}
         </Text>
@@ -54,160 +61,179 @@ function PickerSelect({ label, options, value, onChange }) {
 
 export default function FilterBar({ filters, onFilterChange }) {
   const [searchText, setSearchText] = useState(filters.busca || '');
+  const { isDesktop } = useResponsive();
 
   const handleSearch = () => {
     onFilterChange({ ...filters, busca: searchText });
   };
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.searchRow}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Buscar por título ou descrição..."
-          placeholderTextColor="#9CA3AF"
-          value={searchText}
-          onChangeText={setSearchText}
-          onSubmitEditing={handleSearch}
-          returnKeyType="search"
-        />
-        <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-          <Text style={styles.searchButtonText}>🔍</Text>
-        </TouchableOpacity>
-      </View>
+  const hasActiveFilters = filters.status || filters.prioridade || filters.busca;
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersRow}>
-        <PickerSelect
-          label="Status"
-          options={STATUS_OPTIONS}
-          value={filters.status || ''}
-          onChange={(value) => onFilterChange({ ...filters, status: value })}
-        />
-        <PickerSelect
-          label="Prioridade"
-          options={PRIORIDADE_OPTIONS}
-          value={filters.prioridade || ''}
-          onChange={(value) => onFilterChange({ ...filters, prioridade: value })}
-        />
-        {(filters.status || filters.prioridade || filters.busca) && (
-          <TouchableOpacity
-            style={styles.clearButton}
-            onPress={() => {
-              setSearchText('');
-              onFilterChange({});
-            }}
-          >
-            <Text style={styles.clearButtonText}>✕ Limpar</Text>
-          </TouchableOpacity>
-        )}
-      </ScrollView>
+  return (
+    <View style={[styles.container, isDesktop && styles.containerDesktop]}>
+      <View style={[styles.searchRow, isDesktop && styles.searchRowDesktop]}>
+        <View style={[styles.searchInputWrapper, isDesktop && { maxWidth: 400 }]}>
+          <Text style={styles.searchIcon}>🔍</Text>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar por título ou descrição..."
+            placeholderTextColor={colors.gray400}
+            value={searchText}
+            onChangeText={setSearchText}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
+          />
+        </View>
+
+        <View style={styles.filtersRow}>
+          <PickerSelect
+            label="Status"
+            options={STATUS_OPTIONS}
+            value={filters.status || ''}
+            onChange={(value) => onFilterChange({ ...filters, status: value })}
+          />
+          <PickerSelect
+            label="Prioridade"
+            options={PRIORIDADE_OPTIONS}
+            value={filters.prioridade || ''}
+            onChange={(value) => onFilterChange({ ...filters, prioridade: value })}
+          />
+          {hasActiveFilters && (
+            <TouchableOpacity
+              style={styles.clearButton}
+              onPress={() => {
+                setSearchText('');
+                onFilterChange({});
+              }}
+            >
+              <Text style={styles.clearButtonText}>✕ Limpar</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    backgroundColor: colors.surface,
+    paddingVertical: spacing.sm + 4,
+    paddingHorizontal: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: colors.border,
   },
-  searchRow: {
+  containerDesktop: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  searchRow: {},
+  searchRowDesktop: {
     flexDirection: 'row',
-    marginBottom: 10,
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  searchInputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.gray50,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.sm + 4,
+    marginBottom: spacing.sm,
+  },
+  searchIcon: {
+    fontSize: 16,
+    marginRight: spacing.sm,
   },
   searchInput: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#1F2937',
-  },
-  searchButton: {
-    marginLeft: 8,
-    backgroundColor: '#6366F1',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    justifyContent: 'center',
-  },
-  searchButtonText: {
-    fontSize: 18,
+    ...typography.small,
+    color: colors.textPrimary,
+    paddingVertical: spacing.sm + 2,
   },
   filtersRow: {
     flexDirection: 'row',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
   },
   pickerButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginRight: 8,
+    backgroundColor: colors.gray50,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm + 4,
+    paddingVertical: spacing.sm + 2,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+  },
+  pickerButtonActive: {
+    backgroundColor: colors.primaryBg,
+    borderColor: colors.primary,
   },
   pickerText: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginRight: 4,
+    ...typography.small,
+    color: colors.textSecondary,
+    marginRight: spacing.xs,
   },
   pickerTextActive: {
-    color: '#6366F1',
+    color: colors.primary,
     fontWeight: '600',
   },
   pickerArrow: {
     fontSize: 8,
-    color: '#9CA3AF',
+    color: colors.textTertiary,
   },
   clearButton: {
-    backgroundColor: '#FEE2E2',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginRight: 8,
+    backgroundColor: colors.errorLight,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm + 4,
+    paddingVertical: spacing.sm + 2,
+    borderWidth: 1.5,
+    borderColor: '#FECACA',
   },
   clearButtonText: {
-    fontSize: 13,
-    color: '#EF4444',
+    ...typography.small,
+    color: colors.error,
     fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
     width: '80%',
-    maxWidth: 320,
+    maxWidth: 340,
+    ...shadows.xl,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 16,
+    ...typography.h3,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
     textAlign: 'center',
   },
   modalOption: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginBottom: 4,
+    paddingVertical: spacing.sm + 4,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    marginBottom: spacing.xs,
   },
   modalOptionActive: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: colors.primaryBg,
   },
   modalOptionText: {
-    fontSize: 15,
-    color: '#4B5563',
+    ...typography.body,
+    color: colors.textSecondary,
   },
   modalOptionTextActive: {
-    color: '#6366F1',
+    color: colors.primary,
     fontWeight: '600',
   },
 });
