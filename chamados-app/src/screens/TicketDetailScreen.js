@@ -78,7 +78,10 @@ export default function TicketDetailScreen({ route, navigation }) {
     );
   }
 
-  const canDelete = ticket && (user?.role === 'admin' || user?.id === ticket.solicitante?.id);
+  const isOwnerOrAdmin = ticket && (user?.role === 'admin' || user?.id === ticket.solicitante?.id);
+  const canEdit = isOwnerOrAdmin;
+  const canChangeStatus = isOwnerOrAdmin;
+  const canDelete = isOwnerOrAdmin;
   const statusOptions = STATUS_OPTIONS.filter(s => s.value && s.value !== ticket?.status);
 
   if (loading) {
@@ -157,35 +160,41 @@ export default function TicketDetailScreen({ route, navigation }) {
       )}
 
       {/* Actions */}
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.statusButton]}
-          onPress={() => setStatusModalVisible(true)}
-          disabled={updating}
-        >
-          {updating ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text style={styles.actionButtonText}>🔄 Alterar Status</Text>
+      {(canChangeStatus || canEdit || canDelete) && (
+        <View style={styles.actions}>
+          {canChangeStatus && (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.statusButton]}
+              onPress={() => setStatusModalVisible(true)}
+              disabled={updating}
+            >
+              {updating ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.actionButtonText}>🔄 Alterar Status</Text>
+              )}
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.actionButton, styles.editButton]}
-          onPress={() => navigation.navigate('TicketCreate', { ticket })}
-        >
-          <Text style={styles.actionButtonText}>✏️ Editar</Text>
-        </TouchableOpacity>
+          {canEdit && (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.editButton]}
+              onPress={() => navigation.navigate('TicketCreate', { ticket })}
+            >
+              <Text style={styles.actionButtonText}>✏️ Editar</Text>
+            </TouchableOpacity>
+          )}
 
-        {canDelete && (
-          <TouchableOpacity
-            style={[styles.actionButton, styles.deleteButton]}
-            onPress={handleDelete}
-          >
-            <Text style={[styles.actionButtonText, { color: '#EF4444' }]}>🗑️ Excluir</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+          {canDelete && (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.deleteButton]}
+              onPress={handleDelete}
+            >
+              <Text style={[styles.actionButtonText, { color: '#EF4444' }]}>🗑️ Excluir</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {/* Status Modal */}
       <Modal visible={statusModalVisible} transparent animationType="fade">

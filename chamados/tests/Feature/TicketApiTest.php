@@ -212,6 +212,84 @@ test('resolved_at is cleared when ticket is reopened from resolvido', function (
     expect($ticket->status->value)->toBe('EM_ANDAMENTO');
 });
 
+test('only solicitante or admin can update ticket', function () {
+    $owner = User::factory()->create(['role' => 'user']);
+    $otherUser = User::factory()->create(['role' => 'user']);
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $ticket = Ticket::factory()->aberto()->create([
+        'solicitante_id' => $owner->id,
+    ]);
+
+    // Other user cannot edit
+    $response = $this->actingAs($otherUser, 'sanctum')
+        ->putJson("/api/tickets/{$ticket->id}", [
+            'titulo' => 'Tentativa de edição não autorizada',
+            'descricao' => 'Descrição atualizada por outro usuário sem permissão.',
+            'prioridade' => 'MEDIA',
+        ]);
+
+    $response->assertStatus(403);
+
+    // Owner can edit
+    $response = $this->actingAs($owner, 'sanctum')
+        ->putJson("/api/tickets/{$ticket->id}", [
+            'titulo' => 'Título editado pelo dono do chamado',
+            'descricao' => 'Descrição atualizada pelo próprio solicitante.',
+            'prioridade' => 'MEDIA',
+        ]);
+
+    $response->assertStatus(200);
+    $response->assertJsonPath('data.titulo', 'Título editado pelo dono do chamado');
+
+    // Admin can edit
+    $response = $this->actingAs($admin, 'sanctum')
+        ->putJson("/api/tickets/{$ticket->id}", [
+            'titulo' => 'Título editado pelo administrador',
+            'descricao' => 'Descrição atualizada pelo administrador do sistema.',
+            'prioridade' => 'ALTA',
+        ]);
+
+    $response->assertStatus(200);
+    $response->assertJsonPath('data.titulo', 'Título editado pelo administrador');
+});
+
+test('only solicitante or admin can update ticket status', function () {
+    $owner = User::factory()->create(['role' => 'user']);
+    $otherUser = User::factory()->create(['role' => 'user']);
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $ticket = Ticket::factory()->aberto()->create([
+        'solicitante_id' => $owner->id,
+    ]);
+
+    // Other user cannot change status
+    $response = $this->actingAs($otherUser, 'sanctum')
+        ->patchJson("/api/tickets/{$ticket->id}/status", [
+            'status' => 'EM_ANDAMENTO',
+        ]);
+
+    $response->assertStatus(403);
+
+    // Owner can change status
+    $response = $this->actingAs($owner, 'sanctum')
+        ->patchJson("/api/tickets/{$ticket->id}/status", [
+            'status' => 'EM_ANDAMENTO',
+        ]);
+
+    $response->assertStatus(200);
+    $response->assertJsonPath('data.status', 'EM_ANDAMENTO');
+
+    // Admin can change status
+    $response = $this->actingAs($admin, 'sanctum')
+        ->patchJson("/api/tickets/{$ticket->id}/status", [
+            'status' => 'RESOLVIDO',
+        ]);
+
+    $response->assertStatus(200);
+    $response->assertJsonPath('data.status', 'RESOLVIDO');
+});
+
 test('ticket creation validation', function () {
     $user = User::factory()->create();
 
