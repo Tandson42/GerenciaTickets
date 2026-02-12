@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet } from 'react-native';
-import { colors } from '../../themes/colors';
-import { typography } from '../../themes/typography';
+import { View, TextInput, Text, Platform } from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
 import { spacing, radius } from '../../themes/spacing';
+import { typography } from '../../themes/typography';
 
 export default function Input({
   label,
@@ -11,125 +11,85 @@ export default function Input({
   placeholder,
   error,
   helper,
-  maxLength,
-  minLength,
+  secureTextEntry = false,
   multiline = false,
   numberOfLines = 1,
+  maxLength,
   keyboardType,
-  secureTextEntry = false,
-  autoCapitalize,
-  autoCorrect,
-  required = false,
+  autoCapitalize = 'sentences',
   style,
   inputStyle,
-  onSubmitEditing,
-  returnKeyType,
+  editable = true,
 }) {
+  const { colors } = useTheme();
   const [focused, setFocused] = useState(false);
-  const showCounter = maxLength || minLength;
+  const borderColor = error ? colors.error : focused ? colors.borderFocus : colors.border;
 
   return (
-    <View style={[styles.container, style]}>
+    <View style={[{ marginBottom: spacing.md }, style]}>
       {label && (
-        <Text style={styles.label}>
-          {label} {required && <Text style={styles.required}>*</Text>}
+        <Text style={{
+          ...typography.captionMedium,
+          color: error ? colors.error : colors.textSecondary,
+          marginBottom: spacing.xs + 2,
+        }}>
+          {label}
         </Text>
       )}
-
       <TextInput
-        style={[
-          styles.input,
-          multiline && { minHeight: numberOfLines * 24 + 24, textAlignVertical: 'top' },
-          focused && styles.inputFocused,
-          error && styles.inputError,
-          inputStyle,
-        ]}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={colors.gray400}
-        maxLength={maxLength}
+        placeholderTextColor={colors.textMuted}
+        secureTextEntry={secureTextEntry}
         multiline={multiline}
         numberOfLines={numberOfLines}
+        maxLength={maxLength}
         keyboardType={keyboardType}
-        secureTextEntry={secureTextEntry}
         autoCapitalize={autoCapitalize}
-        autoCorrect={autoCorrect}
+        editable={editable}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        onSubmitEditing={onSubmitEditing}
-        returnKeyType={returnKeyType}
+        style={[
+          {
+            backgroundColor: colors.surfaceElevated,
+            color: colors.textPrimary,
+            borderWidth: 1,
+            borderColor,
+            borderRadius: radius.md,
+            paddingHorizontal: spacing.md,
+            paddingVertical: spacing.sm + 4,
+            fontSize: 15,
+            minHeight: multiline ? numberOfLines * 24 + 24 : undefined,
+            textAlignVertical: multiline ? 'top' : 'center',
+          },
+          Platform.OS === 'web' && {
+            outlineStyle: 'none',
+            transition: 'border-color 0.2s ease',
+          },
+          !editable && { opacity: 0.5 },
+          inputStyle,
+        ]}
       />
-
-      <View style={styles.bottomRow}>
-        {error ? (
-          <Text style={styles.error}>{error}</Text>
-        ) : helper ? (
-          <Text style={styles.helper}>{helper}</Text>
-        ) : (
-          <View />
-        )}
-        {showCounter && (
-          <Text style={[styles.counter, error && { color: colors.error }]}>
-            {value?.length || 0}
-            {maxLength ? `/${maxLength}` : ''}
-            {minLength ? ` (mín. ${minLength})` : ''}
+      {(error || helper || maxLength) && (
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.xs }}>
+          <Text style={{
+            ...typography.caption,
+            color: error ? colors.error : colors.textTertiary,
+            flex: 1,
+          }}>
+            {error || helper || ''}
           </Text>
-        )}
-      </View>
+          {maxLength && (
+            <Text style={{
+              ...typography.caption,
+              color: (value?.length || 0) >= maxLength ? colors.error : colors.textTertiary,
+            }}>
+              {value?.length || 0}/{maxLength}
+            </Text>
+          )}
+        </View>
+      )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: spacing.md,
-  },
-  label: {
-    ...typography.smallMedium,
-    color: colors.gray700,
-    marginBottom: spacing.xs + 2,
-  },
-  required: {
-    color: colors.error,
-  },
-  input: {
-    backgroundColor: colors.gray50,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 4,
-    ...typography.body,
-    color: colors.textPrimary,
-  },
-  inputFocused: {
-    borderColor: colors.primary,
-    backgroundColor: colors.surface,
-  },
-  inputError: {
-    borderColor: colors.error,
-    backgroundColor: '#FEF2F2',
-  },
-  bottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.xs,
-  },
-  error: {
-    ...typography.caption,
-    color: colors.error,
-    flex: 1,
-  },
-  helper: {
-    ...typography.caption,
-    color: colors.textTertiary,
-    flex: 1,
-  },
-  counter: {
-    ...typography.caption,
-    color: colors.textTertiary,
-    textAlign: 'right',
-  },
-});

@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
-import { colors } from '../../themes/colors';
-import { spacing, radius, shadows } from '../../themes/spacing';
+import { View, Platform } from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
+import { spacing, radius } from '../../themes/spacing';
 
 export default function Card({
   children,
@@ -9,18 +9,26 @@ export default function Card({
   padding = spacing.lg,
   style,
   noPadding = false,
+  glow = false,
 }) {
-  const shadow = shadows[elevation] || shadows.md;
+  const { colors, shadows } = useTheme();
+  const shadow = glow ? shadows.glow : (shadows[elevation] || shadows.md);
 
   return (
     <View
       style={[
-        styles.card,
-        shadow,
         {
+          backgroundColor: colors.surface,
+          borderRadius: radius.lg,
+          borderWidth: 1,
+          borderColor: colors.border,
+          marginBottom: spacing.sm + 4,
           padding: noPadding ? 0 : padding,
         },
-        Platform.OS === 'web' && styles.webHover,
+        shadow,
+        Platform.OS === 'web' && {
+          transition: 'box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease',
+        },
         style,
       ]}
     >
@@ -28,14 +36,3 @@ export default function Card({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    marginBottom: spacing.sm + 4,
-  },
-  webHover: {
-    transition: 'box-shadow 0.2s ease, transform 0.2s ease',
-  },
-});

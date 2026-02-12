@@ -1,49 +1,105 @@
 import React from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import { colors } from '../../themes/colors';
+import { Modal, View, Text, TouchableOpacity, Platform } from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
+import { spacing, radius } from '../../themes/spacing';
 import { typography } from '../../themes/typography';
-import { spacing, radius, shadows } from '../../themes/spacing';
 
 export default function Dialog({
   visible,
   title,
-  children,
-  actions = [],
+  message,
   onClose,
+  actions = [],
+  children,
 }) {
+  const { colors, shadows } = useTheme();
+
   return (
-    <Modal visible={visible} transparent animationType="fade">
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
       <TouchableOpacity
-        style={styles.overlay}
         activeOpacity={1}
         onPress={onClose}
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: colors.overlay,
+          padding: spacing.lg,
+        }}
       >
         <TouchableOpacity
           activeOpacity={1}
-          style={[styles.content, Platform.OS === 'web' && styles.contentWeb]}
-          onPress={(e) => e.stopPropagation()}
+          style={[
+            {
+              backgroundColor: colors.surfaceElevated,
+              borderRadius: radius.xl,
+              borderWidth: 1,
+              borderColor: colors.border,
+              padding: spacing.lg,
+              width: '100%',
+              maxWidth: 400,
+            },
+            shadows.lg,
+          ]}
         >
-          {title && <Text style={styles.title}>{title}</Text>}
-          <View style={styles.body}>{children}</View>
+          {title && (
+            <Text style={{
+              ...typography.h3,
+              color: colors.textPrimary,
+              marginBottom: spacing.sm,
+            }}>
+              {title}
+            </Text>
+          )}
+          {message && (
+            <Text style={{
+              ...typography.body,
+              color: colors.textSecondary,
+              marginBottom: spacing.md,
+            }}>
+              {message}
+            </Text>
+          )}
+          {children}
           {actions.length > 0 && (
-            <View style={styles.actions}>
-              {actions.map((action, index) => (
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'flex-end',
+              gap: spacing.sm,
+              marginTop: spacing.md,
+            }}>
+              {actions.map((action, i) => (
                 <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.actionButton,
-                    action.variant === 'primary' && styles.actionPrimary,
-                    action.variant === 'danger' && styles.actionDanger,
-                  ]}
+                  key={i}
                   onPress={action.onPress}
+                  style={[
+                    {
+                      paddingVertical: spacing.sm,
+                      paddingHorizontal: spacing.md,
+                      borderRadius: radius.md,
+                      backgroundColor: action.variant === 'danger'
+                        ? colors.errorLight
+                        : action.variant === 'primary'
+                        ? colors.primary
+                        : 'transparent',
+                    },
+                    Platform.OS === 'web' && { cursor: 'pointer' },
+                  ]}
                 >
-                  <Text
-                    style={[
-                      styles.actionText,
-                      action.variant === 'primary' && styles.actionTextPrimary,
-                      action.variant === 'danger' && styles.actionTextDanger,
-                    ]}
-                  >
+                  <Text style={{
+                    fontSize: 14,
+                    fontWeight: '600',
+                    color: action.variant === 'primary'
+                      ? colors.textInverse
+                      : action.variant === 'danger'
+                      ? colors.error
+                      : colors.textSecondary,
+                  }}>
                     {action.label}
                   </Text>
                 </TouchableOpacity>
@@ -55,64 +111,3 @@ export default function Dialog({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: colors.overlay,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.lg,
-  },
-  content: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    width: '100%',
-    maxWidth: 360,
-    ...shadows.xl,
-  },
-  contentWeb: {
-    transition: 'transform 0.2s ease',
-  },
-  title: {
-    ...typography.h3,
-    color: colors.textPrimary,
-    textAlign: 'center',
-    marginBottom: spacing.md,
-  },
-  body: {
-    marginBottom: spacing.md,
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: spacing.md,
-  },
-  actionButton: {
-    paddingVertical: spacing.sm + 2,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-  },
-  actionPrimary: {
-    backgroundColor: colors.primary,
-  },
-  actionDanger: {
-    backgroundColor: colors.errorLight,
-  },
-  actionText: {
-    ...typography.smallMedium,
-    color: colors.textSecondary,
-  },
-  actionTextPrimary: {
-    color: colors.textInverse,
-    fontWeight: '700',
-  },
-  actionTextDanger: {
-    color: colors.error,
-    fontWeight: '700',
-  },
-});

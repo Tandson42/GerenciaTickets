@@ -1,5 +1,6 @@
 import React from 'react';
 import Badge from './ui/Badge';
+import { useTheme } from '../contexts/ThemeContext';
 import { STATUS_LABELS } from '../utils/constants';
 
 const STATUS_VARIANT = {

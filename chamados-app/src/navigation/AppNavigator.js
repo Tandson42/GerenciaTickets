@@ -1,10 +1,8 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
-import { ActivityIndicator, View } from 'react-native';
-
-// Screens
+import { useTheme } from '../contexts/ThemeContext';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import TicketListScreen from '../screens/TicketListScreen';
@@ -13,65 +11,74 @@ import TicketCreateScreen from '../screens/TicketCreateScreen';
 
 const Stack = createNativeStackNavigator();
 
-function AuthStack() {
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: '#F3F4F6' },
-      }}
-    >
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Register" component={RegisterScreen} />
-    </Stack.Navigator>
-  );
-}
-
-function AppStack() {
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: '#6366F1' },
-        headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: '700' },
-        contentStyle: { backgroundColor: '#F3F4F6' },
-      }}
-    >
-      <Stack.Screen
-        name="TicketList"
-        component={TicketListScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="TicketDetail"
-        component={TicketDetailScreen}
-        options={{ title: 'Detalhes do Chamado' }}
-      />
-      <Stack.Screen
-        name="TicketCreate"
-        component={TicketCreateScreen}
-        options={({ route }) => ({
-          title: route.params?.ticket ? 'Editar Chamado' : 'Novo Chamado',
-        })}
-      />
-    </Stack.Navigator>
-  );
-}
-
 export default function AppNavigator() {
   const { signed, loading } = useAuth();
+  const { colors, isDark } = useTheme();
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3F4F6' }}>
-        <ActivityIndicator size="large" color="#6366F1" />
-      </View>
-    );
-  }
+  if (loading) return null;
+
+  const navTheme = {
+    ...(isDark ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(isDark ? DarkTheme.colors : DefaultTheme.colors),
+      primary: colors.primary,
+      background: colors.background,
+      card: colors.surface,
+      text: colors.textPrimary,
+      border: colors.border,
+      notification: colors.error,
+    },
+  };
+
+  const screenOptions = {
+    headerStyle: {
+      backgroundColor: colors.surface,
+    },
+    headerTintColor: colors.textPrimary,
+    headerTitleStyle: {
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    headerShadowVisible: false,
+    headerBackTitleVisible: false,
+    contentStyle: {
+      backgroundColor: colors.background,
+    },
+    animation: 'fade_from_bottom',
+  };
 
   return (
-    <NavigationContainer>
-      {signed ? <AppStack /> : <AuthStack />}
+    <NavigationContainer theme={navTheme}>
+      <Stack.Navigator screenOptions={screenOptions}>
+        {!signed ? (
+          <>
+            <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+            <Stack.Screen
+              name="Register"
+              component={RegisterScreen}
+              options={{ title: 'Criar Conta' }}
+            />
+          </>
+        ) : (
+          <>
+            <Stack.Screen
+              name="TicketList"
+              component={TicketListScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="TicketDetail"
+              component={TicketDetailScreen}
+              options={{ title: 'Detalhes do Chamado' }}
+            />
+            <Stack.Screen
+              name="TicketCreate"
+              component={TicketCreateScreen}
+              options={{ title: 'Novo Chamado' }}
+            />
+          </>
+        )}
+      </Stack.Navigator>
     </NavigationContainer>
   );
 }

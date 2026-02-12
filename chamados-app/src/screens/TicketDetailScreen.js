@@ -1,90 +1,35 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Alert, ActivityIndicator,
+  View, Text, ScrollView, ActivityIndicator, Alert, TouchableOpacity, Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { ticketService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useResponsive } from '../hooks/useResponsive';
 import StatusBadge from '../components/StatusBadge';
 import PrioridadeBadge from '../components/PrioridadeBadge';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
+import Input from '../components/ui/Input';
 import Dialog from '../components/ui/Dialog';
-import { STATUS_OPTIONS } from '../utils/constants';
-import { colors } from '../themes/colors';
 import { typography } from '../themes/typography';
 import { spacing, radius } from '../themes/spacing';
+import { STATUS_OPTIONS, PRIORIDADE_OPTIONS } from '../utils/constants';
 
 export default function TicketDetailScreen({ route, navigation }) {
   const { ticketId } = route.params;
   const { user } = useAuth();
+  const { colors, shadows } = useTheme();
   const { isDesktop } = useResponsive();
+
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [statusModalVisible, setStatusModalVisible] = useState(false);
-  const [updating, setUpdating] = useState(false);
-
-  const fetchTicket = useCallback(async () => {
-    try {
-      const response = await ticketService.show(ticketId);
-      setTicket(response.data.data);
-    } catch (error) {
-      Alert.alert('Erro', 'Não foi possível carregar o chamado.');
-      navigation.goBack();
-    } finally {
-      setLoading(false);
-    }
-  }, [ticketId]);
-
-  useFocusEffect(
-    useCallback(() => {
-      setLoading(true);
-      fetchTicket();
-    }, [fetchTicket])
-  );
-
-  async function handleStatusChange(newStatus) {
-    setStatusModalVisible(false);
-    setUpdating(true);
-    try {
-      const response = await ticketService.updateStatus(ticketId, newStatus);
-      setTicket(response.data.data);
-      Alert.alert('Sucesso', 'Status atualizado com sucesso!');
-    } catch (error) {
-      const message = error.response?.data?.message || 'Erro ao atualizar status.';
-      Alert.alert('Erro', message);
-    } finally {
-      setUpdating(false);
-    }
-  }
-
-  async function handleDelete() {
-    Alert.alert(
-      'Confirmar Exclusão',
-      'Tem certeza que deseja excluir este chamado? Esta ação não pode ser desfeita.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await ticketService.delete(ticketId);
-              Alert.alert('Sucesso', 'Chamado excluído.');
-              navigation.goBack();
-            } catch (error) {
-              const message = error.response?.status === 403
-                ? 'Você não tem permissão para excluir este chamado.'
-                : 'Erro ao excluir chamado.';
-              Alert.alert('Erro', message);
-            }
-          },
-        },
-      ]
-    );
-  }
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editData, setEditData] = useState({});
+  const [editLoading, setEditLoading] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
 
   const isOwnerOrAdmin = ticket && (user?.role === 'admin' || user?.id === ticket.solicitante?.id);
   const canEdit = isOwnerOrAdmin;
@@ -92,9 +37,70 @@ export default function TicketDetailScreen({ route, navigation }) {
   const canDelete = isOwnerOrAdmin;
   const statusOptions = STATUS_OPTIONS.filter(s => s.value && s.value !== ticket?.status);
 
+  const fetchTicket = useCallback(async () => {
+    try {
+      const response = await ticketService.show(ticketId);
+      setTicket(response.data.data);
+    } catch (err) {
+      Alert.alert('Erro', 'Não foi possível carregar o chamado.');
+      navigation.goBack();
+    } finally {
+      setLoading(false);
+    }
+  }, [ticketId]);
+
+  useFocusEffect(useCallback(() => { fetchTicket(); }, [fetchTicket]));
+
+  async function handleStatusChange(newStatus) {
+    setStatusLoading(true);
+    setShowStatusModal(false);
+    try {
+      await ticketService.updateStatus(ticketId, newStatus);
+      await fetchTicket();
+    } catch (err) {
+      Alert.alert('Erro', err.response?.data?.message || 'Erro ao atualizar status.');
+    } finally {
+      setStatusLoading(false);
+    }
+  }
+
+  function startEditing() {
+    setEditData({ titulo: ticket.titulo, descricao: ticket.descricao, prioridade: ticket.prioridade });
+    setEditing(true);
+  }
+
+  async function handleSaveEdit() {
+    setEditLoading(true);
+    try {
+      await ticketService.update(ticketId, editData);
+      setEditing(false);
+      await fetchTicket();
+    } catch (err) {
+      Alert.alert('Erro', err.response?.data?.message || 'Erro ao salvar.');
+    } finally {
+      setEditLoading(false);
+    }
+  }
+
+  async function handleDelete() {
+    Alert.alert('Confirmar Exclusão', 'Deseja realmente excluir este chamado?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Excluir', style: 'destructive', onPress: async () => {
+          try {
+            await ticketService.delete(ticketId);
+            navigation.goBack();
+          } catch (err) {
+            Alert.alert('Erro', err.response?.data?.message || 'Erro ao excluir.');
+          }
+        },
+      },
+    ]);
+  }
+
   if (loading) {
     return (
-      <View style={styles.loaderContainer}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
@@ -102,393 +108,203 @@ export default function TicketDetailScreen({ route, navigation }) {
 
   if (!ticket) return null;
 
-  // Main content - ticket info
-  const mainContent = (
-    <View style={[styles.mainContent, isDesktop && styles.mainContentDesktop]}>
-      {/* Header Card */}
-      <Card elevation="md">
-        <View style={styles.headerTop}>
-          <Text style={styles.ticketId}>Chamado #{ticket.id}</Text>
-          <Text style={styles.date}>
-            {new Date(ticket.created_at).toLocaleDateString('pt-BR')}
-          </Text>
-        </View>
-        <Text style={styles.titulo}>{ticket.titulo}</Text>
-        <View style={styles.badges}>
-          <StatusBadge status={ticket.status} />
-          <PrioridadeBadge prioridade={ticket.prioridade} />
-        </View>
+  const formattedDate = (d) => d ? new Date(d).toLocaleString('pt-BR') : '—';
+
+  // ---- CONTENT SECTIONS ----
+  const ticketContent = (
+    <View style={{ flex: isDesktop ? 3 : undefined }}>
+      {/* Title + badges */}
+      <Card>
+        {editing ? (
+          <>
+            <Input label="Título" value={editData.titulo} onChangeText={v => setEditData({ ...editData, titulo: v })} maxLength={120} />
+            <Input label="Descrição" value={editData.descricao} onChangeText={v => setEditData({ ...editData, descricao: v })} multiline numberOfLines={5} maxLength={2000} />
+            <Text style={{ ...typography.captionMedium, color: colors.textSecondary, marginBottom: spacing.xs + 2 }}>PRIORIDADE</Text>
+            <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
+              {PRIORIDADE_OPTIONS.filter(o => o.value).map(o => (
+                <TouchableOpacity
+                  key={o.value}
+                  onPress={() => setEditData({ ...editData, prioridade: o.value })}
+                  style={{
+                    paddingVertical: spacing.xs + 2,
+                    paddingHorizontal: spacing.sm + 4,
+                    borderRadius: radius.md,
+                    backgroundColor: editData.prioridade === o.value ? colors.primaryBg : colors.surfaceElevated,
+                    borderWidth: 1,
+                    borderColor: editData.prioridade === o.value ? colors.primaryBorder : colors.border,
+                  }}
+                >
+                  <Text style={{
+                    ...typography.small,
+                    color: editData.prioridade === o.value ? colors.primary : colors.textSecondary,
+                    fontWeight: editData.prioridade === o.value ? '600' : '400',
+                  }}>{o.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              <Button variant="primary" loading={editLoading} onPress={handleSaveEdit}>Salvar</Button>
+              <Button variant="ghost" onPress={() => setEditing(false)}>Cancelar</Button>
+            </View>
+          </>
+        ) : (
+          <>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.sm }}>
+              <Text style={{ ...typography.caption, color: colors.textTertiary }}>#{ticket.id}</Text>
+              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                <StatusBadge status={ticket.status} />
+                <PrioridadeBadge prioridade={ticket.prioridade} />
+              </View>
+            </View>
+            <Text style={{ ...typography.h2, color: colors.textPrimary, marginBottom: spacing.sm + 4 }}>
+              {ticket.titulo}
+            </Text>
+            <Text style={{ ...typography.body, color: colors.textSecondary, lineHeight: 24 }}>
+              {ticket.descricao}
+            </Text>
+          </>
+        )}
       </Card>
 
-      {/* Description */}
-      <Card elevation="sm">
-        <Text style={styles.cardTitle}>📝 Descrição</Text>
-        <Text style={styles.descricao}>{ticket.descricao}</Text>
+      {/* Metadata */}
+      <Card>
+        <Text style={{ ...typography.captionMedium, color: colors.textTertiary, marginBottom: spacing.sm + 4 }}>
+          INFORMAÇÕES
+        </Text>
+        {[
+          ['Solicitante', ticket.solicitante?.name || '—'],
+          ['Criado em', formattedDate(ticket.created_at)],
+          ['Atualizado em', formattedDate(ticket.updated_at)],
+          ['Resolvido em', ticket.resolved_at ? formattedDate(ticket.resolved_at) : '—'],
+        ].map(([label, value], i) => (
+          <View key={i} style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            paddingVertical: spacing.xs + 2,
+            borderBottomWidth: i < 3 ? 1 : 0,
+            borderBottomColor: colors.borderSubtle,
+          }}>
+            <Text style={{ ...typography.small, color: colors.textTertiary }}>{label}</Text>
+            <Text style={{ ...typography.small, color: colors.textPrimary, fontWeight: '500' }}>{value}</Text>
+          </View>
+        ))}
       </Card>
-
-      {/* People */}
-      <Card elevation="sm">
-        <Text style={styles.cardTitle}>👥 Pessoas</Text>
-        <View style={styles.infoGrid}>
-          <InfoRow label="Solicitante" value={ticket.solicitante?.name || 'N/A'} />
-          <InfoRow label="Responsável" value={ticket.responsavel?.name || 'Não atribuído'} />
-          {ticket.resolved_at && (
-            <InfoRow
-              label="Resolvido em"
-              value={new Date(ticket.resolved_at).toLocaleString('pt-BR')}
-            />
-          )}
-        </View>
-      </Card>
-
-      {/* Mobile-only: actions below content */}
-      {!isDesktop && (canChangeStatus || canEdit || canDelete) && (
-        <ActionsSection
-          canChangeStatus={canChangeStatus}
-          canEdit={canEdit}
-          canDelete={canDelete}
-          updating={updating}
-          onStatusPress={() => setStatusModalVisible(true)}
-          onEditPress={() => navigation.navigate('TicketCreate', { ticket })}
-          onDeletePress={handleDelete}
-        />
-      )}
     </View>
   );
 
-  // Sidebar content - logs + actions (desktop)
-  const sidebarContent = (
-    <View style={[styles.sidebar, isDesktop && styles.sidebarDesktop]}>
-      {/* Desktop-only: actions in sidebar */}
-      {isDesktop && (canChangeStatus || canEdit || canDelete) && (
-        <Card elevation="sm">
-          <Text style={styles.cardTitle}>⚡ Ações</Text>
-          <View style={styles.sidebarActions}>
+  const sidebar = (
+    <View style={{ flex: isDesktop ? 1 : undefined }}>
+      {/* Actions */}
+      {(canChangeStatus || canEdit || canDelete) && (
+        <Card>
+          <Text style={{ ...typography.captionMedium, color: colors.textTertiary, marginBottom: spacing.sm + 4 }}>
+            AÇÕES
+          </Text>
+          <View style={{ gap: spacing.sm }}>
             {canChangeStatus && (
-              <Button
-                variant="primary"
-                size="md"
-                fullWidth
-                loading={updating}
-                icon="🔄"
-                onPress={() => setStatusModalVisible(true)}
-              >
-                Alterar Status
+              <Button variant="outline" fullWidth loading={statusLoading} onPress={() => setShowStatusModal(true)}>
+                🔄 Alterar Status
               </Button>
             )}
-            {canEdit && (
-              <Button
-                variant="warning"
-                size="md"
-                fullWidth
-                icon="✏️"
-                onPress={() => navigation.navigate('TicketCreate', { ticket })}
-              >
-                Editar
+            {canEdit && !editing && (
+              <Button variant="secondary" fullWidth onPress={startEditing}>
+                ✏️ Editar
               </Button>
             )}
             {canDelete && (
-              <Button
-                variant="danger"
-                size="md"
-                fullWidth
-                icon="🗑️"
-                onPress={handleDelete}
-              >
-                Excluir
+              <Button variant="danger" fullWidth onPress={handleDelete}>
+                🗑️ Excluir
               </Button>
             )}
           </View>
         </Card>
       )}
 
-      {/* Logs */}
-      {ticket.logs && ticket.logs.length > 0 && (
-        <Card elevation="sm">
-          <Text style={styles.cardTitle}>📋 Histórico</Text>
-          {ticket.logs.map((log, index) => (
-            <View
-              key={log.id}
-              style={[
-                styles.logItem,
-                index === ticket.logs.length - 1 && { marginBottom: 0 },
-              ]}
-            >
-              <View style={styles.logTimeline}>
-                <View style={styles.logDot} />
-                {index < ticket.logs.length - 1 && <View style={styles.logLine} />}
-              </View>
-              <View style={styles.logContent}>
-                <View style={styles.logBadges}>
-                  <StatusBadge status={log.de || 'ABERTO'} size="sm" />
-                  <Text style={styles.logArrow}>→</Text>
-                  <StatusBadge status={log.para} size="sm" />
-                </View>
-                <Text style={styles.logMeta}>
-                  por {log.user?.name || `User #${log.user_id}`}
+      {/* Logs / Timeline */}
+      <Card>
+        <Text style={{ ...typography.captionMedium, color: colors.textTertiary, marginBottom: spacing.sm + 4 }}>
+          HISTÓRICO
+        </Text>
+        {ticket.logs && ticket.logs.length > 0 ? (
+          ticket.logs.map((log, i) => (
+            <View key={log.id || i} style={{
+              flexDirection: 'row',
+              gap: spacing.sm,
+              paddingVertical: spacing.sm,
+              borderBottomWidth: i < ticket.logs.length - 1 ? 1 : 0,
+              borderBottomColor: colors.borderSubtle,
+            }}>
+              <View style={{
+                width: 8, height: 8, borderRadius: 4,
+                backgroundColor: colors.primary,
+                marginTop: 6,
+              }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ ...typography.small, color: colors.textPrimary }}>
+                  {log.descricao}
                 </Text>
-                <Text style={styles.logDate}>
-                  {new Date(log.created_at).toLocaleString('pt-BR')}
+                <Text style={{ ...typography.caption, color: colors.textTertiary, marginTop: 2 }}>
+                  {log.user?.name || 'Sistema'} · {formattedDate(log.created_at)}
                 </Text>
               </View>
             </View>
-          ))}
-        </Card>
-      )}
+          ))
+        ) : (
+          <Text style={{ ...typography.small, color: colors.textTertiary }}>
+            Nenhum registro no histórico.
+          </Text>
+        )}
+      </Card>
     </View>
   );
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={[
-        styles.content,
-        isDesktop && styles.contentDesktop,
-      ]}
-    >
-      {isDesktop ? (
-        <View style={styles.splitView}>
-          {mainContent}
-          {sidebarContent}
-        </View>
-      ) : (
-        <>
-          {mainContent}
-          {sidebarContent}
-        </>
-      )}
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView contentContainerStyle={[
+        { padding: spacing.md },
+        isDesktop && {
+          flexDirection: 'row',
+          gap: spacing.lg,
+          maxWidth: 1200,
+          alignSelf: 'center',
+          width: '100%',
+          paddingVertical: spacing.lg,
+        },
+      ]}>
+        {ticketContent}
+        {sidebar}
+      </ScrollView>
 
-      {/* Status Change Dialog */}
+      {/* Status change modal */}
       <Dialog
-        visible={statusModalVisible}
+        visible={showStatusModal}
         title="Alterar Status"
-        onClose={() => setStatusModalVisible(false)}
+        onClose={() => setShowStatusModal(false)}
       >
-        {statusOptions.map((option) => (
-          <TouchableOpacity
-            key={option.value}
-            style={styles.statusOption}
-            onPress={() => handleStatusChange(option.value)}
-          >
-            <StatusBadge status={option.value} size="lg" />
-          </TouchableOpacity>
-        ))}
-        <Button
-          variant="ghost"
-          size="md"
-          fullWidth
-          onPress={() => setStatusModalVisible(false)}
-          style={{ marginTop: spacing.sm }}
-        >
-          Cancelar
-        </Button>
+        <View style={{ gap: spacing.sm }}>
+          {statusOptions.map(option => (
+            <TouchableOpacity
+              key={option.value}
+              onPress={() => handleStatusChange(option.value)}
+              style={[
+                {
+                  paddingVertical: spacing.sm + 4,
+                  paddingHorizontal: spacing.md,
+                  borderRadius: radius.md,
+                  backgroundColor: colors.surfaceHover,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                },
+                Platform.OS === 'web' && { cursor: 'pointer' },
+              ]}
+            >
+              <Text style={{ ...typography.bodyMedium, color: colors.textPrimary }}>
+                {option.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </Dialog>
-    </ScrollView>
-  );
-}
-
-// Sub-components
-
-function InfoRow({ label, value }) {
-  return (
-    <View style={styles.infoRow}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
     </View>
   );
 }
-
-function ActionsSection({ canChangeStatus, canEdit, canDelete, updating, onStatusPress, onEditPress, onDeletePress }) {
-  return (
-    <View style={styles.actionsCard}>
-      {canChangeStatus && (
-        <Button
-          variant="primary"
-          size="lg"
-          fullWidth
-          loading={updating}
-          icon="🔄"
-          onPress={onStatusPress}
-        >
-          Alterar Status
-        </Button>
-      )}
-      {canEdit && (
-        <Button
-          variant="warning"
-          size="lg"
-          fullWidth
-          icon="✏️"
-          onPress={onEditPress}
-          style={{ marginTop: spacing.sm + 2 }}
-        >
-          Editar
-        </Button>
-      )}
-      {canDelete && (
-        <Button
-          variant="danger"
-          size="lg"
-          fullWidth
-          icon="🗑️"
-          onPress={onDeletePress}
-          style={{ marginTop: spacing.sm + 2 }}
-        >
-          Excluir
-        </Button>
-      )}
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.md, paddingBottom: spacing.xl + 8 },
-  contentDesktop: {
-    padding: spacing.xl,
-    maxWidth: 1200,
-    alignSelf: 'center',
-    width: '100%',
-  },
-  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
-  // Split view
-  splitView: {
-    flexDirection: 'row',
-    gap: spacing.lg,
-  },
-  mainContent: {
-    flex: 1,
-  },
-  mainContentDesktop: {
-    flex: 3,
-  },
-  sidebar: {},
-  sidebarDesktop: {
-    flex: 2,
-    position: 'sticky',
-    top: spacing.lg,
-    alignSelf: 'flex-start',
-  },
-
-  // Header
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm + 4,
-  },
-  ticketId: {
-    ...typography.smallMedium,
-    color: colors.primary,
-    fontWeight: '700',
-  },
-  date: {
-    ...typography.caption,
-    color: colors.textTertiary,
-  },
-  titulo: {
-    ...typography.h2,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm + 4,
-  },
-  badges: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-
-  // Card title
-  cardTitle: {
-    ...typography.bodyMedium,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm + 4,
-    fontWeight: '700',
-  },
-  descricao: {
-    ...typography.body,
-    color: colors.textSecondary,
-    lineHeight: 24,
-  },
-
-  // Info
-  infoGrid: {},
-  infoRow: {
-    flexDirection: 'row',
-    marginBottom: spacing.sm,
-    alignItems: 'center',
-  },
-  infoLabel: {
-    ...typography.small,
-    color: colors.textSecondary,
-    width: 110,
-  },
-  infoValue: {
-    ...typography.smallMedium,
-    color: colors.textPrimary,
-    flex: 1,
-  },
-
-  // Logs
-  logItem: {
-    flexDirection: 'row',
-    marginBottom: spacing.md,
-  },
-  logTimeline: {
-    alignItems: 'center',
-    width: 20,
-    marginRight: spacing.sm + 4,
-  },
-  logDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.primary,
-    marginTop: 4,
-  },
-  logLine: {
-    width: 2,
-    flex: 1,
-    backgroundColor: colors.gray200,
-    marginTop: 4,
-  },
-  logContent: {
-    flex: 1,
-  },
-  logBadges: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.xs,
-    flexWrap: 'wrap',
-  },
-  logArrow: {
-    ...typography.small,
-    color: colors.textTertiary,
-    fontWeight: '700',
-  },
-  logMeta: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  logDate: {
-    ...typography.caption,
-    color: colors.textTertiary,
-    marginTop: 1,
-  },
-
-  // Actions
-  actionsCard: {
-    marginTop: spacing.sm,
-  },
-  sidebarActions: {
-    gap: spacing.sm,
-  },
-
-  // Status dialog
-  statusOption: {
-    paddingVertical: spacing.sm + 4,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radius.md,
-    marginBottom: spacing.xs,
-  },
-});

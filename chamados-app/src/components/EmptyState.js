@@ -1,51 +1,40 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { colors } from '../themes/colors';
+import { View, Text } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 import { typography } from '../themes/typography';
 import { spacing } from '../themes/spacing';
-import { useResponsive } from '../hooks/useResponsive';
 
 export default function EmptyState({
-  message = 'Nenhum chamado encontrado.',
-  emoji = '📋',
+  title = 'Nenhum chamado encontrado',
   subtitle = 'Tente ajustar os filtros ou crie um novo chamado.',
+  icon = '📭',
 }) {
-  const { isDesktop } = useResponsive();
+  const { colors } = useTheme();
 
   return (
-    <View style={[styles.container, isDesktop && styles.containerDesktop]}>
-      <Text style={styles.emoji}>{emoji}</Text>
-      <Text style={styles.message}>{message}</Text>
-      <Text style={styles.subtitle}>{subtitle}</Text>
+    <View style={{
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingVertical: spacing['3xl'],
+      paddingHorizontal: spacing.xl,
+    }}>
+      <Text style={{ fontSize: 48, marginBottom: spacing.md }}>{icon}</Text>
+      <Text style={{
+        ...typography.h3,
+        color: colors.textPrimary,
+        textAlign: 'center',
+        marginBottom: spacing.sm,
+      }}>
+        {title}
+      </Text>
+      <Text style={{
+        ...typography.body,
+        color: colors.textTertiary,
+        textAlign: 'center',
+      }}>
+        {subtitle}
+      </Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: spacing['3xl'],
-    paddingHorizontal: spacing.lg,
-  },
-  containerDesktop: {
-    paddingVertical: 120,
-  },
-  emoji: {
-    fontSize: 56,
-    marginBottom: spacing.md,
-  },
-  message: {
-    ...typography.h3,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    ...typography.small,
-    color: colors.textTertiary,
-    textAlign: 'center',
-    maxWidth: 300,
-  },
-});

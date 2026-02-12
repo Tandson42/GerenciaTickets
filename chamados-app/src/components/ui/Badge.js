@@ -1,21 +1,24 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { typography } from '../../themes/typography';
-import { radius } from '../../themes/spacing';
+import { View, Text } from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
+import { spacing, radius } from '../../themes/spacing';
 
-const VARIANTS = {
-  info: { bg: '#DBEAFE', text: '#2563EB', border: '#3B82F6' },
-  success: { bg: '#D1FAE5', text: '#059669', border: '#10B981' },
-  warning: { bg: '#FEF3C7', text: '#D97706', border: '#F59E0B' },
-  error: { bg: '#FEE2E2', text: '#DC2626', border: '#EF4444' },
-  neutral: { bg: '#F3F4F6', text: '#4B5563', border: '#9CA3AF' },
-  primary: { bg: '#EEF2FF', text: '#4F46E5', border: '#6366F1' },
-};
+function getVariantColors(colors, variant) {
+  const map = {
+    success: { bg: colors.successLight, text: colors.success, dot: colors.success },
+    warning: { bg: colors.warningLight, text: colors.warning, dot: colors.warning },
+    error: { bg: colors.errorLight, text: colors.error, dot: colors.error },
+    info: { bg: colors.infoLight, text: colors.info, dot: colors.info },
+    neutral: { bg: colors.surfaceHover, text: colors.textSecondary, dot: colors.textTertiary },
+    primary: { bg: colors.primaryBg, text: colors.primary, dot: colors.primary },
+  };
+  return map[variant] || map.neutral;
+}
 
 const SIZES = {
-  sm: { paddingH: 6, paddingV: 2, fontSize: 10, dotSize: 5 },
-  md: { paddingH: 10, paddingV: 4, fontSize: 12, dotSize: 6 },
-  lg: { paddingH: 14, paddingV: 6, fontSize: 14, dotSize: 8 },
+  sm: { paddingV: 2, paddingH: 6, fontSize: 10, dotSize: 5 },
+  md: { paddingV: 3, paddingH: 10, fontSize: 11, dotSize: 6 },
+  lg: { paddingV: 5, paddingH: 14, fontSize: 13, dotSize: 7 },
 };
 
 export default function Badge({
@@ -23,56 +26,39 @@ export default function Badge({
   variant = 'neutral',
   size = 'md',
   showDot = false,
-  style,
 }) {
-  const v = VARIANTS[variant] || VARIANTS.neutral;
+  const { colors } = useTheme();
+  const v = getVariantColors(colors, variant);
   const s = SIZES[size] || SIZES.md;
 
   return (
-    <View
-      style={[
-        styles.badge,
-        {
-          backgroundColor: v.bg,
-          borderColor: v.border,
-          paddingHorizontal: s.paddingH,
-          paddingVertical: s.paddingV,
-        },
-        style,
-      ]}
-    >
+    <View style={{
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      backgroundColor: v.bg,
+      paddingVertical: s.paddingV,
+      paddingHorizontal: s.paddingH,
+      borderRadius: radius.full,
+      gap: spacing.xs,
+    }}>
       {showDot && (
-        <View
-          style={[
-            styles.dot,
-            {
-              backgroundColor: v.border,
-              width: s.dotSize,
-              height: s.dotSize,
-              borderRadius: s.dotSize / 2,
-            },
-          ]}
-        />
+        <View style={{
+          width: s.dotSize,
+          height: s.dotSize,
+          borderRadius: s.dotSize / 2,
+          backgroundColor: v.dot,
+        }} />
       )}
-      <Text style={[styles.text, { color: v.text, fontSize: s.fontSize }]}>
+      <Text style={{
+        fontSize: s.fontSize,
+        fontWeight: '600',
+        color: v.text,
+        letterSpacing: 0.3,
+        textTransform: 'uppercase',
+      }}>
         {children}
       </Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: radius.full,
-    borderWidth: 1,
-    alignSelf: 'flex-start',
-  },
-  dot: {
-    marginRight: 6,
-  },
-  text: {
-    ...typography.captionMedium,
-  },
-});
