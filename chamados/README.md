@@ -228,6 +228,42 @@ php artisan test --filter=TicketApiTest
 7. **Busca textual** por título ou descrição
 8. **Validação** de campos obrigatórios e regras de tamanho
 
+## Início Rápido (start.sh)
+
+Na raiz do projeto existe um script `start.sh` que automatiza toda a configuração e inicialização do sistema (backend + frontend):
+
+```bash
+# Dar permissão de execução (apenas na primeira vez)
+chmod +x start.sh
+
+# Subir o sistema completo (backend + frontend)
+./start.sh
+
+# Subir apenas o backend (API Laravel)
+./start.sh --backend
+
+# Subir apenas o frontend (Expo Web)
+./start.sh --frontend
+
+# Rodar os testes
+./start.sh --test
+
+# Resetar o banco de dados
+./start.sh --reset
+
+# Exibir ajuda
+./start.sh --help
+```
+
+O script automaticamente:
+- Verifica dependências (PHP, Composer, Node, npm)
+- Instala pacotes se necessário
+- Configura `.env`, banco SQLite, migrations e seeders
+- Configura a URL da API no frontend
+- Inicia o backend (API + Queue Worker) e o frontend (Expo Web)
+- Exibe credenciais de teste e URLs de acesso
+- Encerra todos os serviços com `Ctrl+C`
+
 ## Comandos Úteis
 
 ```bash
