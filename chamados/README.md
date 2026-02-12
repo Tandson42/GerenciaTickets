@@ -7,7 +7,7 @@ API REST para gestão de chamados internos, desenvolvida com Laravel 12, SQLite 
 - **Laravel 12** (PHP 8.3)
 - **Banco de dados:** SQLite
 - **Autenticação:** Laravel Sanctum (token-based, ideal para React Native)
-- **Testes:** PHPUnit
+- **Testes:** Pest (PHP Testing Framework)
 
 ## Requisitos
 
@@ -110,7 +110,42 @@ Authorization: Bearer 1|abc123...
 
 **Exemplo:**
 ```
-GET /api/tickets?status=ABERTO&prioridade=ALTA&busca=login
+GET /api/tickets?status=ABERTO&prioridade=ALTA&busca=login&per_page=10
+```
+
+### Paginação
+
+A listagem de tickets (`GET /api/tickets`) retorna resultados paginados. A resposta inclui metadados de paginação no seguinte formato:
+
+```json
+{
+    "data": [ ... ],
+    "links": {
+        "first": "http://localhost/api/tickets?page=1",
+        "last": "http://localhost/api/tickets?page=3",
+        "prev": null,
+        "next": "http://localhost/api/tickets?page=2"
+    },
+    "meta": {
+        "current_page": 1,
+        "from": 1,
+        "last_page": 3,
+        "per_page": 15,
+        "to": 15,
+        "total": 35,
+        "path": "http://localhost/api/tickets"
+    }
+}
+```
+
+| Parâmetro  | Tipo | Descrição                              |
+|------------|------|----------------------------------------|
+| `page`     | int  | Página desejada (padrão: 1)            |
+| `per_page` | int  | Itens por página (padrão: 15)          |
+
+**Exemplo com paginação:**
+```
+GET /api/tickets?page=2&per_page=10
 ```
 
 ### Criar Chamado (POST /api/tickets)
