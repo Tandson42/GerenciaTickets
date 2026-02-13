@@ -267,13 +267,4 @@ const BASE_URL = 'http://<seu-ip-da-máquina>:8000';
 
 ---
 
-## 📚 Documentação Detalhada
-
-Para documentação específica de:
-- **Backend**: Veja [chamados/README.md](./chamados/README.md)
-- **Frontend**: Veja [chamados-app/README.md](./chamados-app/README.md) (se existir)
-- **Instruções principais**: Veja [.github/copilot-instructions.md](./.github/copilot-instructions.md)
-
----
-
 **Desenvolvido para teste técnico**
