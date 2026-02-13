@@ -44,7 +44,7 @@ start.bat
 > ```
 
 O script faz automaticamente:
-- Instala dependências (PHP/Node)
+- Verifica se possui dependências (PHP/Node)
 - Configura `.env` e chave da aplicação
 - Cria banco SQLite e executa migrations + seeders
 - Inicia Laravel (porta 8000) + Expo (porta 19000)
