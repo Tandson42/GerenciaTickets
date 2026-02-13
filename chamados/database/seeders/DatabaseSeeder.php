@@ -7,7 +7,7 @@ use App\Enums\TicketStatus;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
+
 
 class DatabaseSeeder extends Seeder
 {
@@ -17,7 +17,7 @@ class DatabaseSeeder extends Seeder
         $admin = User::factory()->create([
             'name' => 'Admin User',
             'email' => 'admin@example.com',
-            'password' => Hash::make('password123'),
+            'password' => 'password123',
             'role' => 'admin',
         ]);
 
@@ -25,7 +25,7 @@ class DatabaseSeeder extends Seeder
         $user = User::factory()->create([
             'name' => 'Usuário Comum',
             'email' => 'user@example.com',
-            'password' => Hash::make('password123'),
+            'password' => 'password123',
             'role' => 'user',
         ]);
 
