@@ -54,6 +54,8 @@ O script faz automaticamente:
 
 ## ⚙️ Setup Manual
 
+### 🐧 Linux / macOS
+
 ```bash
 # 1. Backend (Laravel)
 cd chamados
@@ -61,6 +63,42 @@ composer install
 cp .env.example .env
 php artisan key:generate
 touch database/database.sqlite
+php artisan migrate --seed
+php artisan serve --host=0.0.0.0 --port=8000
+
+# 2. Frontend (React Native/Expo) - Em outro terminal
+cd chamados-app
+npm install
+npx expo start
+```
+
+### 🪟 Windows (Command Prompt)
+
+```cmd
+REM 1. Backend (Laravel)
+cd chamados
+composer install
+copy .env.example .env
+php artisan key:generate
+type nul > database\database.sqlite
+php artisan migrate --seed
+php artisan serve --host=0.0.0.0 --port=8000
+
+REM 2. Frontend (React Native/Expo) - Em outro terminal
+cd chamados-app
+npm install
+npx expo start
+```
+
+### 🪟 Windows (PowerShell)
+
+```powershell
+# 1. Backend (Laravel)
+cd chamados
+composer install
+Copy-Item .env.example .env
+php artisan key:generate
+New-Item -Path database\database.sqlite -ItemType File -Force | Out-Null
 php artisan migrate --seed
 php artisan serve --host=0.0.0.0 --port=8000
 
