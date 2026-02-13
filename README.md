@@ -13,7 +13,7 @@ API REST para gestão de chamados internos com interface React Native, desenvolv
 - **Node.js** >= 16 + npm (para frontend)
 - **Git**
 
-### Setup Automático (Recomendado)
+### Setup Automático
 
 **Escolha o comando para seu SO:**
 
