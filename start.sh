@@ -37,17 +37,35 @@ FRONTEND_DIR="$ROOT_DIR/chamados-app"
 # ─── Detectar IP local ──────────────────────────────────────────────────────
 get_local_ip() {
     local ip=""
+    
+    # Priority 1: Try to get the primary network interface IP (Linux/macOS)
     if command -v ip &> /dev/null; then
-        ip=$(ip route get 1 2>/dev/null | awk '{print $7; exit}')
+        ip=$(ip route get 1 2>/dev/null | awk '{print $7; exit}' 2>/dev/null)
     fi
+    
+    # Priority 2: Try ifconfig (macOS/BSD)
     if [ -z "$ip" ] && command -v ifconfig &> /dev/null; then
-        ip=$(ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1' | head -1 | awk '{print $2}' | sed 's/addr://')
+        ip=$(ifconfig 2>/dev/null | grep -E 'inet [0-9]' | grep -v '127.0.0.1' | head -1 | awk '{print $2}' | sed 's/addr://')
     fi
-    if [ -z "$ip" ]; then
-        ip="localhost"
+    
+    # Priority 3: Try hostname -I (Linux)
+    if [ -z "$ip" ] && command -v hostname &> /dev/null; then
+        ip=$(hostname -I 2>/dev/null | awk '{print $1}')
     fi
+    
+    # Priority 4: Check if running in WSL
+    if [ -z "$ip" ] && grep -qi microsoft /proc/version 2>/dev/null; then
+        ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    fi
+    
+    # Fallback to localhost
+    if [ -z "$ip" ] || [ "$ip" = "" ]; then
+        ip="127.0.0.1"
+    fi
+    
     echo "$ip"
 }
+
 
 LOCAL_IP=$(get_local_ip)
 BACKEND_PORT=8000
@@ -55,8 +73,14 @@ FRONTEND_PORT=8081
 
 # ─── Verificar dependências ─────────────────────────────────────────────────
 check_dependencies() {
-    header "Verificando dependências"
-
+    local platform="Linux/Unix"
+    [ "$(uname)" = "Darwin" ] && platform="macOS"
+    grep -qi microsoft /proc/version 2>/dev/null && platform="WSL (Windows Subsystem for Linux)"
+    
+    header "Verificando Dependências (${platform})"
+    
+    success "IP Detectado: ${LOCAL_IP}"
+    
     local missing=()
 
     if ! command -v php &> /dev/null; then
@@ -160,11 +184,26 @@ setup_frontend() {
         success "Dependências do npm já instaladas"
     fi
 
-    # Configurar URL da API para apontar para o backend local
-    info "Configurando URL da API para http://${LOCAL_IP}:${BACKEND_PORT}/api ..."
-    sed -i.bak "s|const BASE_URL = .*|const BASE_URL = 'http://${LOCAL_IP}:${BACKEND_PORT}/api';|" src/services/api.js
-    rm -f src/services/api.js.bak
-    success "URL da API configurada"
+    # Gerar arquivo de configuração da API dinamicamente
+    info "Gerando configuração de API para http://${LOCAL_IP}:${BACKEND_PORT}/api ..."
+    
+    cat > .api-config.json <<EOF
+{
+  "api_base_url": "http://${LOCAL_IP}:${BACKEND_PORT}/api",
+  "backend_url": "http://${LOCAL_IP}:${BACKEND_PORT}",
+  "api_port": ${BACKEND_PORT},
+  "frontend_port": ${FRONTEND_PORT},
+  "environment": "development",
+  "generated_at": "$(date '+%Y-%m-%d %H:%M:%S')",
+  "platform_values": {
+    "android_emulator": "http://10.0.2.2:${BACKEND_PORT}/api",
+    "ios_simulator": "http://localhost:${BACKEND_PORT}/api",
+    "physical_device": "http://${LOCAL_IP}:${BACKEND_PORT}/api"
+  }
+}
+EOF
+    
+    success "Arquivo .api-config.json gerado com sucesso"
 
     cd "$ROOT_DIR"
 }
