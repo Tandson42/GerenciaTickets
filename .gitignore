@@ -4,3 +4,6 @@
 !README.md
 # Ignora a pasta .vscode
 .vscode/
+
+# Docker
+.env

@@ -4,60 +4,95 @@ API REST para gestão de chamados internos com interface React Native, desenvolv
 
 ---
 
-## 🚀 Início Rápido
+## 🚀 Início Rápido (Docker)
+
+A forma mais simples de rodar o sistema completo.
+
+### Requisitos
+
+- **Docker** >= 20.10
+- **Docker Compose** >= 2.0
+
+### Subir o sistema
+
+```bash
+# 1. Clone o repositório
+git clone <url-do-repositório>
+cd GerenciaTickets
+
+# 2. Suba todos os serviços
+docker compose up -d --build
+
+# 3. Aguarde o container ficar healthy (~30s) e acesse:
+#    Backend:  http://localhost:8000/api
+#    Frontend: http://localhost:8081
+```
+
+O Docker Compose cuida de tudo automaticamente:
+- Instala dependências (Composer / npm)
+- Configura `.env` e gera a chave da aplicação
+- Cria banco SQLite, executa migrations e seeders
+- Inicia Backend (Laravel na porta 8000) e Frontend (Expo Web na porta 8081)
+
+### Comandos úteis
+
+```bash
+# Ver logs em tempo real
+docker compose logs -f
+
+# Ver logs apenas do backend
+docker compose logs -f backend
+
+# Parar todos os serviços
+docker compose down
+
+# Parar e remover volumes (reseta o banco de dados)
+docker compose down -v
+
+# Rebuildar do zero (após alterações no código)
+docker compose down -v
+docker compose build --no-cache
+docker compose up -d
+
+# Executar comandos artisan dentro do container
+docker exec chamados-backend php artisan migrate:status
+docker exec chamados-backend php artisan db:seed --force
+```
+
+### Configuração
+
+Copie o arquivo de exemplo e ajuste se necessário:
+
+```bash
+cp .env.docker .env
+```
+
+Variáveis disponíveis no `.env`:
+
+| Variável | Padrão | Descrição |
+|----------|--------|-----------|
+| `BACKEND_PORT` | 8000 | Porta da API Laravel |
+| `FRONTEND_PORT` | 8081 | Porta do Frontend Expo Web |
+| `DB_SEED` | true | Semear banco com dados de exemplo |
+| `APP_DEBUG` | false | Modo debug do Laravel |
+| `API_BASE_URL` | http://localhost:8000/api | URL da API (acessada pelo navegador) |
+
+---
+
+## ⚙️ Setup Manual (Desenvolvimento)
+
+Para desenvolvimento local sem Docker.
 
 ### Requisitos
 
 - **PHP** >= 8.2 com extensões: `pdo_sqlite`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`
 - **Composer**
-- **Node.js** >= 16 + npm (para frontend)
+- **Node.js** >= 16 + npm
 - **Git**
 
-### Setup Automático
-
-**Escolha o comando para seu SO:**
-
-#### 🐧 Linux / macOS
-```bash
-# Dar permissão de execução (primeira vez)
-chmod +x start.sh
-
-# Iniciar todo o sistema (backend + frontend)
-./start.sh
-```
-
-#### 🪟 Windows (Command Prompt)
-```cmd
-# Abra o Command Prompt e execute:
-start.bat
-```
-
-#### 🪟 Windows (PowerShell)
-```powershell
-# Abra o PowerShell como Administrador e execute:
-.\start.ps1
-```
-
-> **Nota Windows:** Se receber erro de permissão no PowerShell, execute primeiro:
-> ```powershell
-> Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-> ```
-
-O script faz automaticamente:
-- Verifica se possui dependências (PHP/Node)
-- Configura `.env` e chave da aplicação
-- Cria banco SQLite e executa migrations + seeders
-- Inicia Laravel (porta 8000) + Expo (porta 19000)
-- Exibe credenciais de teste
-
----
-
-## ⚙️ Setup Manual
-
-### 🐧 Linux / macOS
+### Backend (Laravel)
 
 ```bash
-# 1. Backend (Laravel)
 cd chamados
 composer install
 cp .env.example .env
@@ -65,44 +100,11 @@ php artisan key:generate
 touch database/database.sqlite
 php artisan migrate --seed
 php artisan serve --host=0.0.0.0 --port=8000
-
-# 2. Frontend (React Native/Expo) - Em outro terminal
-cd chamados-app
-npm install
-npx expo start
 ```
 
-### 🪟 Windows (Command Prompt)
+### Frontend (React Native / Expo) — em outro terminal
 
-```cmd
-REM 1. Backend (Laravel)
-cd chamados
-composer install
-copy .env.example .env
-php artisan key:generate
-type nul > database\database.sqlite
-php artisan migrate --seed
-php artisan serve --host=0.0.0.0 --port=8000
-
-REM 2. Frontend (React Native/Expo) - Em outro terminal
-cd chamados-app
-npm install
-npx expo start
-```
-
-### 🪟 Windows (PowerShell)
-
-```powershell
-# 1. Backend (Laravel)
-cd chamados
-composer install
-Copy-Item .env.example .env
-php artisan key:generate
-New-Item -Path database\database.sqlite -ItemType File -Force | Out-Null
-php artisan migrate --seed
-php artisan serve --host=0.0.0.0 --port=8000
-
-# 2. Frontend (React Native/Expo) - Em outro terminal
+```bash
 cd chamados-app
 npm install
 npx expo start
@@ -158,51 +160,9 @@ Authorization: Bearer <seu-token>
 
 ---
 
-## 🧪 Comandos Importantes
-
-### Migrations
-
-```bash
-cd chamados
-
-# Executar todas as migrations
-php artisan migrate
-
-# Refazer tudo e popular com dados de exemplo
-php artisan migrate:fresh --seed
-
-# Desfazer última migration
-php artisan migrate:rollback
-```
-
-### Seeders (Dados de Teste)
-
-```bash
-# Popular banco com usuários e tickets de exemplo
-php artisan db:seed
-
-# Ou junto com migrate:fresh
-php artisan migrate:fresh --seed
-```
-
-### Testes
-
-```bash
-# Executar todos os testes
-php artisan test
-
-# Executar apenas testes de tickets
-php artisan test --filter=TicketApiTest
-
-# Com mais detalhes de saída
-php artisan test --verbose
-```
-
----
-
 ## 🔓 Credenciais de Teste
 
-Após rodar `php artisan migrate:fresh --seed`, use:
+Disponíveis após o seed do banco (automático via Docker ou `php artisan migrate --seed`):
 
 | Usuário       | Email              | Senha       | Papel |
 |---------------|--------------------|-------------|-------|
@@ -211,21 +171,44 @@ Após rodar `php artisan migrate:fresh --seed`, use:
 
 ---
 
-## 📋 Endpoints Principais da API
+## 🧪 Testes
+
+```bash
+# Via Docker
+docker exec chamados-backend php artisan test
+
+# Local
+cd chamados
+php artisan test
+
+# Executar apenas testes de tickets
+php artisan test --filter=TicketApiTest
+
+# Com mais detalhes
+php artisan test --verbose
+```
+
+---
+
+## 📋 Endpoints da API
 
 ### Autenticação
-- `POST /api/login` — Login (sem auth)
-- `POST /api/register` — Registrar novo usuário (sem auth)
-- `POST /api/logout` — Logout (requer auth)
-- `GET /api/me` — Dados do usuário logado (requer auth)
+| Método | Endpoint | Auth | Descrição |
+|--------|----------|------|-----------|
+| `POST` | `/api/login` | Não | Login |
+| `POST` | `/api/register` | Não | Registrar novo usuário |
+| `POST` | `/api/logout` | Sim | Logout |
+| `GET` | `/api/me` | Sim | Dados do usuário logado |
 
 ### Tickets
-- `GET /api/tickets` — Listar todos (com filtros e paginação)
-- `POST /api/tickets` — Criar novo ticket
-- `GET /api/tickets/{id}` — Detalhar um ticket
-- `PUT /api/tickets/{id}` — Atualizar um ticket
-- `DELETE /api/tickets/{id}` — Deletar um ticket
-- `PATCH /api/tickets/{id}/status` — Mudar status (com log de auditoria)
+| Método | Endpoint | Auth | Descrição |
+|--------|----------|------|-----------|
+| `GET` | `/api/tickets` | Sim | Listar todos (com filtros e paginação) |
+| `POST` | `/api/tickets` | Sim | Criar novo ticket |
+| `GET` | `/api/tickets/{id}` | Sim | Detalhar um ticket |
+| `PUT` | `/api/tickets/{id}` | Sim | Atualizar um ticket |
+| `DELETE` | `/api/tickets/{id}` | Sim | Deletar um ticket |
+| `PATCH` | `/api/tickets/{id}/status` | Sim | Mudar status (com log de auditoria) |
 
 **Exemplo de filtros:**
 ```
@@ -253,8 +236,8 @@ GerenciaTickets/
 │   │   └── factories/
 │   ├── tests/
 │   │   └── Feature/TicketApiTest.php
-│   ├── .env.example
-│   └── composer.json
+│   ├── Dockerfile
+│   └── docker/                     # Configs Docker (nginx, php, supervisor)
 │
 ├── chamados-app/             # Frontend React Native + Expo
 │   ├── src/
@@ -262,46 +245,48 @@ GerenciaTickets/
 │   │   ├── services/         # API client (axios)
 │   │   ├── contexts/         # AuthContext
 │   │   └── components/
-│   ├── package.json
-│   └── app.json
+│   ├── Dockerfile
+│   └── docker/               # Configs Docker (nginx, entrypoint)
 │
-├── start.sh                  # Script de automação
+├── docker-compose.yml        # Orquestração dos serviços
+├── .env.docker               # Variáveis de ambiente para Docker
 └── README.md                 # Este arquivo
 ```
 
 ---
 
-## 🛠️ Soluções de Problemas
+## 🛠️ Solução de Problemas
 
-### Erro: "SQLSTATE[HY000]: General error: 1 unable to open database file"
+### Docker: Credenciais não funcionam após rebuild
+```bash
+# Recrie os volumes para forçar novo seed
+docker compose down -v
+docker compose up -d --build
+```
+
+### Docker: Verificar se o seed rodou corretamente
+```bash
+docker logs chamados-backend 2>&1 | grep -E "seed|Seed|SEED|AVISO"
+```
+
+### Local: "SQLSTATE[HY000]: unable to open database file"
 ```bash
 cd chamados
 touch database/database.sqlite
 php artisan migrate --seed
 ```
 
-### Erro: "Class 'PDO' not found"
+### Local: "Class 'PDO' not found"
 ```bash
-# Instalar extensão SQLite para PHP
 # Ubuntu/Debian:
 sudo apt-get install php-sqlite3
 
 # macOS:
-brew install php-sqlite3
+brew install php
 ```
 
-### Frontend não consegue conectar à API
-Edite `chamados-app/src/services/api.js` e atualize a `BASE_URL`:
-```javascript
-// Para Android emulator:
-const BASE_URL = 'http://10.0.2.2:8000';
-
-// Para iOS simulator:
-const BASE_URL = 'http://localhost:8000';
-
-// Para device na mesma rede:
-const BASE_URL = 'http://<seu-ip-da-máquina>:8000';
-```
+### Frontend não conecta à API
+Verifique se o backend está rodando e acessível na porta configurada. No Docker, ambos os serviços compartilham a mesma rede automaticamente.
 
 ---
 

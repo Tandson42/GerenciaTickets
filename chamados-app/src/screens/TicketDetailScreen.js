@@ -30,6 +30,8 @@ export default function TicketDetailScreen({ route, navigation }) {
   const [editData, setEditData] = useState({});
   const [editLoading, setEditLoading] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const isOwnerOrAdmin = ticket && (user?.role === 'admin' || user?.id === ticket.solicitante?.id);
   const canEdit = isOwnerOrAdmin;
@@ -83,19 +85,17 @@ export default function TicketDetailScreen({ route, navigation }) {
   }
 
   async function handleDelete() {
-    Alert.alert('Confirmar Exclusão', 'Deseja realmente excluir este chamado?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Excluir', style: 'destructive', onPress: async () => {
-          try {
-            await ticketService.delete(ticketId);
-            navigation.goBack();
-          } catch (err) {
-            Alert.alert('Erro', err.response?.data?.message || 'Erro ao excluir.');
-          }
-        },
-      },
-    ]);
+    setDeleteLoading(true);
+    try {
+      await ticketService.delete(ticketId);
+      setShowDeleteModal(false);
+      navigation.goBack();
+    } catch (err) {
+      setShowDeleteModal(false);
+      Alert.alert('Erro', err.response?.data?.message || 'Erro ao excluir.');
+    } finally {
+      setDeleteLoading(false);
+    }
   }
 
   if (loading) {
@@ -212,7 +212,7 @@ export default function TicketDetailScreen({ route, navigation }) {
               </Button>
             )}
             {canDelete && (
-              <Button variant="danger" fullWidth onPress={handleDelete}>
+              <Button variant="danger" fullWidth onPress={() => setShowDeleteModal(true)}>
                 🗑️ Excluir
               </Button>
             )}
@@ -305,6 +305,18 @@ export default function TicketDetailScreen({ route, navigation }) {
           ))}
         </View>
       </Dialog>
+
+      {/* Delete confirmation modal */}
+      <Dialog
+        visible={showDeleteModal}
+        title="Confirmar Exclusão"
+        message="Deseja realmente excluir este chamado? Esta ação não pode ser desfeita."
+        onClose={() => !deleteLoading && setShowDeleteModal(false)}
+        actions={[
+          { label: 'Cancelar', onPress: () => setShowDeleteModal(false) },
+          { label: 'Excluir', variant: 'danger', onPress: handleDelete },
+        ]}
+      />
     </View>
   );
 }

@@ -1,0 +1,82 @@
+# ─── Sistema de Gerenciamento de Chamados ────────────────────────────────────
+# Docker Compose - Orquestração de todos os serviços
+#
+# Uso:
+#   docker compose up -d              # Sobe todos os serviços
+#   docker compose up -d backend      # Sobe apenas o backend
+#   docker compose up -d frontend     # Sobe apenas o frontend
+#   docker compose logs -f            # Acompanha logs
+#   docker compose down               # Para todos os serviços
+#   docker compose down -v            # Para e remove volumes
+#
+# ═════════════════════════════════════════════════════════════════════════════
+
+services:
+  # ─── Backend (Laravel API) ───────────────────────────────────────────────
+  backend:
+    build:
+      context: ./chamados
+      dockerfile: Dockerfile
+    container_name: chamados-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      - APP_NAME=${APP_NAME:-Chamados}
+      - APP_ENV=${APP_ENV:-production}
+      - APP_DEBUG=${APP_DEBUG:-false}
+      - APP_URL=${APP_URL:-http://localhost:8000}
+      - APP_LOCALE=en
+      - APP_FAKER_LOCALE=pt_BR
+      - DB_CONNECTION=${DB_CONNECTION:-sqlite}
+      - DB_DATABASE=${DB_DATABASE:-/var/www/html/database/database.sqlite}
+      - DB_SEED=${DB_SEED:-true}
+      - LOG_CHANNEL=stack
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - QUEUE_CONNECTION=database
+      - CACHE_STORE=database
+      - SESSION_DRIVER=database
+      - MAIL_MAILER=log
+      - BCRYPT_ROUNDS=12
+      - SANCTUM_STATEFUL_DOMAINS=${SANCTUM_STATEFUL_DOMAINS:-localhost,localhost:8081}
+    volumes:
+      - backend-storage:/var/www/html/storage
+      - backend-database:/var/www/html/database
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - chamados-network
+
+  # ─── Frontend (Expo Web) ─────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./chamados-app
+      dockerfile: Dockerfile
+    container_name: chamados-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-8081}:8081"
+    environment:
+      - API_BASE_URL=${API_BASE_URL:-http://localhost:8000/api}
+      - BACKEND_BASE_URL=${BACKEND_BASE_URL:-http://localhost:8000}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - chamados-network
+
+# ─── Volumes ───────────────────────────────────────────────────────────────
+volumes:
+  backend-storage:
+    driver: local
+  backend-database:
+    driver: local
+
+# ─── Networks ──────────────────────────────────────────────────────────────
+networks:
+  chamados-network:
+    driver: bridge
