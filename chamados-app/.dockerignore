@@ -1,0 +1,30 @@
+# Dependencies (installed during build)
+node_modules/
+
+# Build output
+dist/
+web-build/
+
+# Environment files
+.env
+.api-config.json
+
+# Version control
+.git
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Expo
+.expo/
+
+# Documentation
+README.md
